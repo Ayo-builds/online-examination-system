@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# Condition 1: the request is NOT a real file
+RewriteCond %{REQUEST_FILENAME} !-f
+# Condition 2: the request is NOT a real directory
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# If both conditions pass, hand the path to index.php as ?url=...
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
