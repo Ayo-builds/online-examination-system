@@ -41,5 +41,15 @@ class User extends Model
             [$status, $id]
         );
     }
+
+    public function activeByRole(string $role): array
+    {
+        return $this->query(
+            "SELECT id, full_name FROM users
+             WHERE role = ? AND status = 'active'
+             ORDER BY full_name",
+            [$role]
+        )->fetchAll();
+    }
 }
     

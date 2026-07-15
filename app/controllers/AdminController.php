@@ -106,4 +106,66 @@ class AdminController extends Controller
 
         $this->redirect('admin/users');
     }
+
+    public function courses(): void
+    {
+        $courses = (new Course())->allWithLecturer();
+        $this->view('admin/courses', ['courses' => $courses]);
+    }
+
+    public function createCourse(): void
+    {
+        $lecturers = (new User())->activeByRole('lecturer');
+        $this->view('admin/create_course', ['lecturers' => $lecturers]);
+    }
+
+    public function storeCourse(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/createCourse');
+        }
+
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('admin/createCourse');
+        }
+
+        $code       = strtoupper(trim($_POST['course_code'] ?? ''));
+        $title      = trim($_POST['title'] ?? '');
+        $lecturerId = (int) ($_POST['lecturer_id'] ?? 0);
+
+        $errors = [];
+
+        if (!preg_match('/^[A-Z]{2,5}[0-9]{3}$/', $code)) {
+            $errors[] = 'Course code must be 2-5 letters followed by 3 digits (e.g. CSC301).';
+        }
+        if ($title === '' || mb_strlen($title) > 150) {
+            $errors[] = 'Title is required (max 150 characters).';
+        }
+
+        // The lecturer must exist, be a lecturer, and be active
+        $lecturer = (new User())->find($lecturerId);
+        if ($lecturer === null || $lecturer['role'] !== 'lecturer' || $lecturer['status'] !== 'active') {
+            $errors[] = 'Please choose a valid lecturer.';
+        }
+
+        $courseModel = new Course();
+
+        if (empty($errors) && $courseModel->findByCode($code) !== null) {
+            $errors[] = 'That course code already exists.';
+        }
+
+        if (!empty($errors)) {
+            $lecturers = (new User())->activeByRole('lecturer');
+            $this->view('admin/create_course', [
+                'errors'    => $errors,
+                'lecturers' => $lecturers,
+                'old'       => ['course_code' => $code, 'title' => $title, 'lecturer_id' => $lecturerId],
+            ]);
+            return;
+        }
+
+        $courseModel->create($code, $title, $lecturerId);
+
+        $this->redirect('admin/courses');
+    }
 }
