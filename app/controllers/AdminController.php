@@ -168,4 +168,73 @@ class AdminController extends Controller
 
         $this->redirect('admin/courses');
     }
+
+    // GET /admin/enrollments/{courseId}
+    public function enrollments(string $courseId = ''): void
+    {
+        $courseId = (int) $courseId;
+
+        $course = (new Course())->find($courseId);
+        if ($course === null) {
+            $this->redirect('admin/courses');
+        }
+
+        $enrollmentModel = new Enrollment();
+
+        $this->view('admin/enrollments', [
+            'course'    => $course,
+            'enrolled'  => $enrollmentModel->studentsInCourse($courseId),
+            'available' => $enrollmentModel->studentsNotInCourse($courseId),
+        ]);
+    }
+
+    // POST /admin/enroll/{courseId}
+    public function enroll(string $courseId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/courses');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('admin/courses');
+        }
+
+        $courseId  = (int) $courseId;
+        $studentId = (int) ($_POST['student_id'] ?? 0);
+
+        $course  = (new Course())->find($courseId);
+        $student = (new User())->find($studentId);
+
+        if ($course === null
+            || $student === null
+            || $student['role'] !== 'student'
+            || $student['status'] !== 'active') {
+            $this->redirect('admin/courses');
+        }
+
+        $enrollmentModel = new Enrollment();
+
+        if (!$enrollmentModel->isEnrolled($studentId, $courseId)) {
+            $enrollmentModel->enroll($studentId, $courseId);
+        }
+
+        $this->redirect('admin/enrollments/' . $courseId);
+    }
+
+    // POST /admin/unenroll/{courseId}
+    public function unenroll(string $courseId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/courses');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('admin/courses');
+        }
+
+        $courseId  = (int) $courseId;
+        $studentId = (int) ($_POST['student_id'] ?? 0);
+
+        (new Enrollment())->unenroll($studentId, $courseId);
+
+        $this->redirect('admin/enrollments/' . $courseId);
+    }
 }

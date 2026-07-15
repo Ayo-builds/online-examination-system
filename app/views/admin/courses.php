@@ -22,6 +22,7 @@
                     <th>Code</th>
                     <th>Title</th>
                     <th>Lecturer</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -30,6 +31,9 @@
                     <td><?= htmlspecialchars($c['course_code']) ?></td>
                     <td><?= htmlspecialchars($c['title']) ?></td>
                     <td><?= htmlspecialchars($c['lecturer_name']) ?></td>
+                    <td>
+                        <a href="<?= BASE_URL ?>admin/enrollments/<?= (int) $c['id'] ?>">Enrollments</a>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
