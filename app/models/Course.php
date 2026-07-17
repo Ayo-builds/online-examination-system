@@ -49,4 +49,15 @@ class Course extends Model
             [$lecturerId]
         )->fetchAll();
     }
+
+    // Returns the course ONLY if it belongs to this lecturer; null otherwise
+    public function findOwned(int $courseId, int $lecturerId): ?array
+    {
+        $row = $this->query(
+            "SELECT * FROM courses WHERE id = ? AND lecturer_id = ? LIMIT 1",
+            [$courseId, $lecturerId]
+        )->fetch();
+
+        return $row ?: null;
+    }
 }
