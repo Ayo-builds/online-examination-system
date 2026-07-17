@@ -32,5 +32,21 @@ class Course extends Model
         );
 
         return (int) $this->db->lastInsertId();
+        
+    }
+
+    // Courses taught by one lecturer, with enrollment counts
+    public function byLecturer(int $lecturerId): array
+    {
+        return $this->query(
+            "SELECT c.id, c.course_code, c.title,
+                    COUNT(e.student_id) AS student_count
+             FROM courses c
+             LEFT JOIN enrollments e ON e.course_id = c.id
+             WHERE c.lecturer_id = ?
+             GROUP BY c.id, c.course_code, c.title
+             ORDER BY c.course_code",
+            [$lecturerId]
+        )->fetchAll();
     }
 }

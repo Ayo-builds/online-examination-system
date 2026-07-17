@@ -6,8 +6,14 @@ class LecturerController extends Controller
         RoleGuard::require(['lecturer']);
     }
 
-    public function dashboard(): void
+  public function dashboard(): void
     {
-        $this->view('lecturer/dashboard', ['user' => Auth::user()]);
+        $lecturerId = (int) Auth::user()['id'];
+        $courses = (new Course())->byLecturer($lecturerId);
+
+        $this->view('lecturer/dashboard', [
+            'user'    => Auth::user(),
+            'courses' => $courses,
+        ]);
     }
 }
