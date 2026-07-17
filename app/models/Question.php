@@ -62,4 +62,19 @@ class Question extends Model
             throw $e;
         }
     }
+
+    public function createEssay(
+        int $courseId,
+        string $questionText,
+        float $marks,
+        int $createdBy
+    ): int {
+        $this->query(
+            "INSERT INTO questions (course_id, question_type, question_text, marks, created_by)
+             VALUES (?, 'essay', ?, ?, ?)",
+            [$courseId, $questionText, $marks, $createdBy]
+        );
+
+        return (int) $this->db->lastInsertId();
+    }
 }

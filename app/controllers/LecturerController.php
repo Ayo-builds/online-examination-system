@@ -124,4 +124,64 @@ class LecturerController extends Controller
 
         $this->redirect('lecturer/questions/' . $courseId);
     }
+
+    // GET /lecturer/createEssay/{courseId}
+    public function createEssay(string $courseId = ''): void
+    {
+        $courseId   = (int) $courseId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $this->view('lecturer/create_essay', ['course' => $course]);
+    }
+
+    // POST /lecturer/storeEssay/{courseId}
+    public function storeEssay(string $courseId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('lecturer/dashboard');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('lecturer/dashboard');
+        }
+
+        $courseId   = (int) $courseId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $questionText = trim($_POST['question_text'] ?? '');
+        $marks        = (float) ($_POST['marks'] ?? 0);
+
+        $errors = [];
+
+        if ($questionText === '') {
+            $errors[] = 'Question text is required.';
+        }
+        if ($marks <= 0 || $marks > 100) {
+            $errors[] = 'Marks must be between 0.5 and 100.';
+        }
+
+        if (!empty($errors)) {
+            $this->view('lecturer/create_essay', [
+                'course' => $course,
+                'errors' => $errors,
+                'old'    => ['question_text' => $questionText, 'marks' => $marks],
+            ]);
+            return;
+        }
+
+        (new Question())->createEssay($courseId, $questionText, $marks, $lecturerId);
+
+        $this->redirect('lecturer/questions/' . $courseId);
+    }
 }
