@@ -184,4 +184,68 @@ class LecturerController extends Controller
 
         $this->redirect('lecturer/questions/' . $courseId);
     }
+
+    // GET /lecturer/question/{courseId}/{questionId}
+    public function question(string $courseId = '', string $questionId = ''): void
+    {
+        $courseId   = (int) $courseId;
+        $questionId = (int) $questionId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $question = (new Question())->findWithOptions($questionId, $courseId);
+        if ($question === null) {
+            http_response_code(404);
+            exit('404 — Question not found.');
+        }
+
+        $this->view('lecturer/question_detail', [
+            'course'   => $course,
+            'question' => $question,
+            'inUse'    => (new Question())->isInUse($questionId),
+        ]);
+    }
+
+    // POST /lecturer/deleteQuestion/{courseId}/{questionId}
+    public function deleteQuestion(string $courseId = '', string $questionId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('lecturer/dashboard');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('lecturer/dashboard');
+        }
+
+        $courseId   = (int) $courseId;
+        $questionId = (int) $questionId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $questionModel = new Question();
+
+        $question = $questionModel->findWithOptions($questionId, $courseId);
+        if ($question === null) {
+            http_response_code(404);
+            exit('404 — Question not found.');
+        }
+
+        if ($questionModel->isInUse($questionId)) {
+            // Refuse: it's part of an exam or answered attempt
+            $this->redirect('lecturer/question/' . $courseId . '/' . $questionId);
+        }
+
+        $questionModel->delete($questionId);
+
+        $this->redirect('lecturer/questions/' . $courseId);
+    }
 }

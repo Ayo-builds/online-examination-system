@@ -77,4 +77,46 @@ class Question extends Model
 
         return (int) $this->db->lastInsertId();
     }
+
+    // Full question + its options (options empty for essays)
+    public function findWithOptions(int $questionId, int $courseId): ?array
+    {
+        $question = $this->query(
+            "SELECT * FROM questions WHERE id = ? AND course_id = ? LIMIT 1",
+            [$questionId, $courseId]
+        )->fetch();
+
+        if ($question === false) {
+            return null;
+        }
+
+        $question['options'] = $this->query(
+            "SELECT id, option_text, is_correct
+             FROM question_options
+             WHERE question_id = ?
+             ORDER BY id",
+            [$questionId]
+        )->fetchAll();
+
+        return $question;
+    }
+
+    // Is this question referenced by any exam pool or attempt?
+    public function isInUse(int $questionId): bool
+    {
+        $row = $this->query(
+            "SELECT 1 FROM exam_question_pool WHERE question_id = ?
+             UNION
+             SELECT 1 FROM attempt_questions WHERE question_id = ?
+             LIMIT 1",
+            [$questionId, $questionId]
+        )->fetch();
+
+        return $row !== false;
+    }
+
+    public function delete(int $questionId): void
+    {
+        $this->query("DELETE FROM questions WHERE id = ?", [$questionId]);
+    }
 }

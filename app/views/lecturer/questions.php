@@ -33,7 +33,11 @@
                 <?php foreach ($questions as $q): ?>
                 <tr>
                     <td><?= htmlspecialchars(strtoupper($q['question_type'])) ?></td>
-                    <td><?= htmlspecialchars(mb_strimwidth($q['question_text'], 0, 90, '…')) ?></td>
+                    <td>
+                        <a href="<?= BASE_URL ?>lecturer/question/<?= (int) $course['id'] ?>/<?= (int) $q['id'] ?>">
+                            <?= htmlspecialchars(mb_strimwidth($q['question_text'], 0, 90, '…')) ?>
+                        </a>
+                    </td>
                     <td><?= htmlspecialchars($q['marks']) ?></td>
                     <td><?= htmlspecialchars($q['created_at']) ?></td>
                 </tr>
