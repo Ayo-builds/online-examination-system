@@ -100,3 +100,13 @@ select {
 .btn-danger:hover  { background: #b02a37; }
 .btn-success { background: #198754; color: #fff; }
 .btn-success:hover { background: #146c43; }
+
+textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccd0d5;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+}

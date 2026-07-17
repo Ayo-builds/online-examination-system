@@ -24,4 +24,42 @@ class Question extends Model
             [$courseId]
         )->fetchAll();
     }
+
+    // Insert an MCQ + its options atomically. Returns new question id.
+    public function createMcq(
+        int $courseId,
+        string $questionText,
+        float $marks,
+        int $createdBy,
+        array $options,        // e.g. ['Lagos', 'Abuja', 'Kano', 'Ibadan']
+        int $correctIndex      // 0-based index into $options
+    ): int {
+        try {
+            $this->db->beginTransaction();
+
+            $this->query(
+                "INSERT INTO questions (course_id, question_type, question_text, marks, created_by)
+                 VALUES (?, 'mcq', ?, ?, ?)",
+                [$courseId, $questionText, $marks, $createdBy]
+            );
+
+            $questionId = (int) $this->db->lastInsertId();
+
+            $optStmt = $this->db->prepare(
+                "INSERT INTO question_options (question_id, option_text, is_correct)
+                 VALUES (?, ?, ?)"
+            );
+
+            foreach ($options as $i => $text) {
+                $optStmt->execute([$questionId, $text, $i === $correctIndex ? 1 : 0]);
+            }
+
+            $this->db->commit();
+            return $questionId;
+
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
 }
