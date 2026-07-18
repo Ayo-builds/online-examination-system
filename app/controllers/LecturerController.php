@@ -357,4 +357,83 @@ class LecturerController extends Controller
 
         $this->redirect('lecturer/examPool/' . $courseId . '/' . $examId);
     }
+
+    // GET /lecturer/examPool/{courseId}/{examId}
+    public function examPool(string $courseId = '', string $examId = ''): void
+    {
+        $courseId   = (int) $courseId;
+        $examId     = (int) $examId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $exam = (new Exam())->findInCourse($examId, $courseId);
+        if ($exam === null) {
+            http_response_code(404);
+            exit('404 — Exam not found.');
+        }
+
+        $this->view('lecturer/exam_pool', [
+            'course'      => $course,
+            'exam'        => $exam,
+            'questions'   => (new Question())->byCourse($courseId),
+            'poolIds'     => (new ExamPool())->questionIds($examId),
+        ]);
+    }
+
+    // POST /lecturer/savePool/{courseId}/{examId}
+    public function savePool(string $courseId = '', string $examId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('lecturer/dashboard');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('lecturer/dashboard');
+        }
+
+        $courseId   = (int) $courseId;
+        $examId     = (int) $examId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $exam = (new Exam())->findInCourse($examId, $courseId);
+        if ($exam === null) {
+            http_response_code(404);
+            exit('404 — Exam not found.');
+        }
+
+        // Pool is frozen once the exam leaves draft
+        if ($exam['status'] !== 'draft') {
+            $this->redirect('lecturer/examPool/' . $courseId . '/' . $examId);
+        }
+
+        $submitted = $_POST['question_ids'] ?? [];
+        if (!is_array($submitted)) {
+            $submitted = [];
+        }
+
+        // Keep only ids that genuinely belong to this course's bank
+        $validIds = array_map(
+            fn($q) => (int) $q['id'],
+            (new Question())->byCourse($courseId)
+        );
+
+        $cleanIds = array_values(array_intersect(
+            array_map('intval', $submitted),
+            $validIds
+        ));
+
+        (new ExamPool())->replace($examId, $cleanIds);
+
+        $this->redirect('lecturer/examPool/' . $courseId . '/' . $examId);
+    }
 }
