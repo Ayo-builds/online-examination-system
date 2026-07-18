@@ -248,4 +248,113 @@ class LecturerController extends Controller
 
         $this->redirect('lecturer/questions/' . $courseId);
     }
+
+    // GET /lecturer/exams/{courseId}
+    public function exams(string $courseId = ''): void
+    {
+        $courseId   = (int) $courseId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $this->view('lecturer/exams', [
+            'course' => $course,
+            'exams'  => (new Exam())->byCourse($courseId),
+        ]);
+    }
+
+    // GET /lecturer/createExam/{courseId} + POST /lecturer/storeExam/{courseId}
+    public function createExam(string $courseId = ''): void
+    {
+        $courseId   = (int) $courseId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $this->view('lecturer/create_exam', ['course' => $course]);
+    }
+
+    public function storeExam(string $courseId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('lecturer/dashboard');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('lecturer/dashboard');
+        }
+
+        $courseId   = (int) $courseId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $title        = trim($_POST['title'] ?? '');
+        $instructions = trim($_POST['instructions'] ?? '');
+        $duration     = (int) ($_POST['duration_minutes'] ?? 0);
+        $windowStart  = trim($_POST['window_start'] ?? '');
+        $windowEnd    = trim($_POST['window_end'] ?? '');
+        $perAttempt   = (int) ($_POST['questions_per_attempt'] ?? 0);
+        $passMark     = (float) ($_POST['pass_mark'] ?? 0);
+
+        $errors = [];
+
+        if ($title === '' || mb_strlen($title) > 150) {
+            $errors[] = 'Title is required (max 150 characters).';
+        }
+        if ($duration < 5 || $duration > 300) {
+            $errors[] = 'Duration must be between 5 and 300 minutes.';
+        }
+        if ($perAttempt < 1) {
+            $errors[] = 'Questions per attempt must be at least 1.';
+        }
+        if ($passMark < 0 || $passMark > 100) {
+            $errors[] = 'Pass mark must be between 0 and 100.';
+        }
+
+        // Window validation: parse the datetime-local values
+        $startTs = strtotime($windowStart);
+        $endTs   = strtotime($windowEnd);
+
+        if ($startTs === false || $endTs === false) {
+            $errors[] = 'Both window dates are required.';
+        } elseif ($endTs <= $startTs) {
+            $errors[] = 'Window end must be after window start.';
+        } elseif ($endTs <= time()) {
+            $errors[] = 'Window end must be in the future.';
+        }
+
+        if (!empty($errors)) {
+            $this->view('lecturer/create_exam', [
+                'course' => $course,
+                'errors' => $errors,
+                'old'    => [
+                    'title' => $title, 'instructions' => $instructions,
+                    'duration_minutes' => $duration,
+                    'window_start' => $windowStart, 'window_end' => $windowEnd,
+                    'questions_per_attempt' => $perAttempt, 'pass_mark' => $passMark,
+                ],
+            ]);
+            return;
+        }
+
+        $examId = (new Exam())->create(
+            $courseId, $title, $instructions, $duration,
+            date('Y-m-d H:i:s', $startTs), date('Y-m-d H:i:s', $endTs),
+            $perAttempt, $passMark
+        );
+
+        $this->redirect('lecturer/examPool/' . $courseId . '/' . $examId);
+    }
 }

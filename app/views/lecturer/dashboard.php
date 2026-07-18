@@ -33,8 +33,10 @@
                     <td><?= htmlspecialchars($c['course_code']) ?></td>
                     <td><?= htmlspecialchars($c['title']) ?></td>
                     <td><?= (int) $c['student_count'] ?></td>
-                    <td>
+                  <td>
                         <a href="<?= BASE_URL ?>lecturer/questions/<?= (int) $c['id'] ?>">Question bank</a>
+                        &nbsp;·&nbsp;
+                        <a href="<?= BASE_URL ?>lecturer/exams/<?= (int) $c['id'] ?>">Exams</a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
