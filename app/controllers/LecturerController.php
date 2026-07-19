@@ -436,4 +436,97 @@ class LecturerController extends Controller
 
         $this->redirect('lecturer/examPool/' . $courseId . '/' . $examId);
     }
+
+    // POST /lecturer/publishExam/{courseId}/{examId}
+    public function publishExam(string $courseId = '', string $examId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('lecturer/dashboard');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('lecturer/dashboard');
+        }
+
+        $courseId   = (int) $courseId;
+        $examId     = (int) $examId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $examModel = new Exam();
+        $exam = $examModel->findInCourse($examId, $courseId);
+        if ($exam === null) {
+            http_response_code(404);
+            exit('404 — Exam not found.');
+        }
+
+        $errors = [];
+
+        if ($exam['status'] !== 'draft') {
+            $errors[] = 'Only draft exams can be published.';
+        }
+
+        $poolCount = (new ExamPool())->countForExam($examId);
+        if ($poolCount < (int) $exam['questions_per_attempt']) {
+            $errors[] = 'Pool has ' . $poolCount . ' question(s) but the exam draws '
+                      . (int) $exam['questions_per_attempt'] . ' — add more to the pool.';
+        }
+
+        if (strtotime($exam['window_end']) <= time()) {
+            $errors[] = 'The exam window has already ended — edit the window or create a new exam.';
+        }
+
+        if (!empty($errors)) {
+            $this->view('lecturer/exam_pool', [
+                'course'    => $course,
+                'exam'      => $exam,
+                'questions' => (new Question())->byCourse($courseId),
+                'poolIds'   => (new ExamPool())->questionIds($examId),
+                'errors'    => $errors,
+            ]);
+            return;
+        }
+
+        $examModel->setStatus($examId, 'published');
+
+        $this->redirect('lecturer/exams/' . $courseId);
+    }
+
+    // POST /lecturer/closeExam/{courseId}/{examId}
+    public function closeExam(string $courseId = '', string $examId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('lecturer/dashboard');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('lecturer/dashboard');
+        }
+
+        $courseId   = (int) $courseId;
+        $examId     = (int) $examId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $examModel = new Exam();
+        $exam = $examModel->findInCourse($examId, $courseId);
+        if ($exam === null) {
+            http_response_code(404);
+            exit('404 — Exam not found.');
+        }
+
+        if ($exam['status'] === 'published') {
+            $examModel->setStatus($examId, 'closed');
+        }
+
+        $this->redirect('lecturer/exams/' . $courseId);
+    }
 }

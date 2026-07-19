@@ -46,4 +46,12 @@ class Exam extends Model
 
         return (int) $this->db->lastInsertId();
     }
+
+    public function setStatus(int $examId, string $status): void
+    {
+        $this->query(
+            "UPDATE exams SET status = ? WHERE id = ?",
+            [$status, $examId]
+        );
+    }
 }

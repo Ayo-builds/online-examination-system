@@ -41,6 +41,15 @@
                     <td><?= (int) $e['pool_count'] ?> / <?= (int) $e['questions_per_attempt'] ?> needed</td>
                     <td>
                         <a href="<?= BASE_URL ?>lecturer/examPool/<?= (int) $course['id'] ?>/<?= (int) $e['id'] ?>">Pool</a>
+                        <?php if ($e['status'] === 'published'): ?>
+                        <form method="POST"
+                              action="<?= BASE_URL ?>lecturer/closeExam/<?= (int) $course['id'] ?>/<?= (int) $e['id'] ?>"
+                              onsubmit="return confirm('Close this exam? Students will no longer be able to start it.');"
+                              style="display:inline; margin-left:8px;">
+                            <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
+                            <button type="submit" class="btn-small btn-danger">Close</button>
+                        </form>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>

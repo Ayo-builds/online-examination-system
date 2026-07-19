@@ -14,6 +14,13 @@
             Draws <?= (int) $exam['questions_per_attempt'] ?> question(s) per attempt ·
             Pool currently holds <?= count($poolIds) ?>
         </p>
+        <?php if (!empty($errors)): ?>
+            <div class="alert alert-error" style="margin-top:12px;">
+                <?php foreach ($errors as $e): ?>
+                    <div><?= htmlspecialchars($e) ?></div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
 
         <?php if (empty($questions)): ?>
             <p style="margin-top:16px;">
@@ -58,6 +65,13 @@
             </div>
 
             <button type="submit">Save pool</button>
+        </form>
+        <form method="POST"
+              action="<?= BASE_URL ?>lecturer/publishExam/<?= (int) $course['id'] ?>/<?= (int) $exam['id'] ?>"
+              onsubmit="return confirm('Publish this exam? The pool will be locked and students will be able to start it during the window.');"
+              style="margin-top:14px;">
+            <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
+            <button type="submit" class="btn-small btn-success">Publish exam</button>
         </form>
         <?php endif; ?>
     </div>
