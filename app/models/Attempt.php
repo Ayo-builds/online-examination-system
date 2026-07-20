@@ -76,4 +76,79 @@ class Attempt extends Model
             throw $e;
         }
     }
+
+    // The attempt, but ONLY if it belongs to this student
+    public function findOwned(int $attemptId, int $studentId): ?array
+    {
+        $row = $this->query(
+            "SELECT a.*, e.title AS exam_title, e.instructions,
+                    c.course_code
+             FROM exam_attempts a
+             JOIN exams e   ON e.id = a.exam_id
+             JOIN courses c ON c.id = e.course_id
+             WHERE a.id = ? AND a.student_id = ?
+             LIMIT 1",
+            [$attemptId, $studentId]
+        )->fetch();
+
+        return $row ?: null;
+    }
+
+    // Reconstruct the frozen paper: questions in snapshot order,
+    // options in snapshot order, plus any answer already saved.
+    public function questionsForAttempt(int $attemptId): array
+    {
+        $rows = $this->query(
+            "SELECT aq.question_id, aq.display_order, aq.option_order,
+                    q.question_type, q.question_text, q.marks,
+                    ans.selected_option_id, ans.essay_text
+             FROM attempt_questions aq
+             JOIN questions q ON q.id = aq.question_id
+             LEFT JOIN attempt_answers ans
+                    ON ans.attempt_id = aq.attempt_id AND ans.question_id = aq.question_id
+             WHERE aq.attempt_id = ?
+             ORDER BY aq.display_order",
+            [$attemptId]
+        )->fetchAll();
+
+        // Attach options (in frozen order) to each MCQ
+        foreach ($rows as &$row) {
+            $row['options'] = [];
+
+            if ($row['question_type'] === 'mcq') {
+                $allOptions = $this->query(
+                    "SELECT id, option_text FROM question_options WHERE question_id = ?",
+                    [(int) $row['question_id']]
+                )->fetchAll();
+
+                // Index by id for O(1) lookup
+                $byId = [];
+                foreach ($allOptions as $o) {
+                    $byId[(int) $o['id']] = $o['option_text'];
+                }
+
+                // Rebuild in the frozen order from option_order JSON
+                $order = json_decode($row['option_order'] ?? '[]', true) ?: [];
+                foreach ($order as $optId) {
+                    if (isset($byId[(int) $optId])) {
+                        $row['options'][] = ['id' => (int) $optId, 'text' => $byId[(int) $optId]];
+                    }
+                }
+            }
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    // Mark an attempt auto-submitted (deadline reached). Grading happens in Step 35.
+    public function autoSubmit(int $attemptId): void
+    {
+        $this->query(
+            "UPDATE exam_attempts
+             SET status = 'auto_submitted', submitted_at = NOW()
+             WHERE id = ? AND status = 'in_progress'",
+            [$attemptId]
+        );
+    }
 }

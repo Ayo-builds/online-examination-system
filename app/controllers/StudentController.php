@@ -67,13 +67,35 @@ class StudentController extends Controller
         $this->redirect('student/exam/' . $attemptId);
     }
 
-    // GET /student/exam/{attemptId} — REAL VERSION COMES IN STEP 33
+     // GET /student/exam/{attemptId}
     public function exam(string $attemptId = ''): void
     {
-        $this->json([
-            'status'  => 'attempt created',
-            'note'    => 'Exam page arrives in Step 33',
-            'attempt' => (int) $attemptId,
+        $attemptId = (int) $attemptId;
+        $studentId = (int) Auth::user()['id'];
+
+        $attemptModel = new Attempt();
+        $attempt = $attemptModel->findOwned($attemptId, $studentId);
+
+        if ($attempt === null) {
+            http_response_code(404);
+            exit('404 — Attempt not found.');
+        }
+
+        // Already finished? Send to the (future) result page, not the exam
+        if ($attempt['status'] !== 'in_progress') {
+            $this->redirect('student/dashboard');
+        }
+
+        // Past the server deadline? Auto-submit instead of showing questions
+        if (strtotime($attempt['deadline_at']) <= time()) {
+            $attemptModel->autoSubmit($attemptId);
+            $this->redirect('student/dashboard');
+        }
+
+        $this->view('student/exam', [
+            'attempt'   => $attempt,
+            'questions' => $attemptModel->questionsForAttempt($attemptId),
+            'remaining' => strtotime($attempt['deadline_at']) - time(),  // seconds left
         ]);
     }
 }

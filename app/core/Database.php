@@ -17,6 +17,8 @@ class Database
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                     PDO::ATTR_EMULATE_PREPARES   => false,
                 ]);
+                // Align MySQL's session clock with PHP's (+01:00 = WAT / Africa/Lagos)
+                self::$instance->exec("SET time_zone = '+01:00'");
             } catch (PDOException $e) {
                 // Never echo $e->getMessage() to the browser — it can leak credentials
                 error_log($e->getMessage());
