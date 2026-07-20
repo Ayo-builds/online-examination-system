@@ -54,4 +54,24 @@ class Exam extends Model
             [$status, $examId]
         );
     }
+
+    // Published exams in the student's enrolled courses, with their attempt state
+    public function availableForStudent(int $studentId): array
+    {
+        return $this->query(
+            "SELECT e.id, e.title, e.instructions, e.duration_minutes,
+                    e.window_start, e.window_end, e.questions_per_attempt,
+                    c.course_code, c.title AS course_title,
+                    a.id     AS attempt_id,
+                    a.status AS attempt_status
+             FROM exams e
+             JOIN courses c     ON c.id = e.course_id
+             JOIN enrollments n ON n.course_id = c.id AND n.student_id = ?
+             LEFT JOIN exam_attempts a
+                    ON a.exam_id = e.id AND a.student_id = ?
+             WHERE e.status = 'published'
+             ORDER BY e.window_end ASC",
+            [$studentId, $studentId]
+        )->fetchAll();
+    }
 }

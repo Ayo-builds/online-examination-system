@@ -6,8 +6,14 @@ class StudentController extends Controller
         RoleGuard::require(['student']);
     }
 
-    public function dashboard(): void
+   public function dashboard(): void
     {
-        $this->view('student/dashboard', ['user' => Auth::user()]);
+        $studentId = (int) Auth::user()['id'];
+
+        $this->view('student/dashboard', [
+            'user'  => Auth::user(),
+            'exams' => (new Exam())->availableForStudent($studentId),
+            'now'   => time(),
+        ]);
     }
 }
