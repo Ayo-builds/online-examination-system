@@ -119,4 +119,15 @@ class Question extends Model
     {
         $this->query("DELETE FROM questions WHERE id = ?", [$questionId]);
     }
+
+    public function optionBelongsToQuestion(int $optionId, int $questionId): bool
+    {
+        $row = $this->query(
+            "SELECT 1 FROM question_options
+             WHERE id = ? AND question_id = ? LIMIT 1",
+            [$optionId, $questionId]
+        )->fetch();
+
+        return $row !== false;
+    }
 }

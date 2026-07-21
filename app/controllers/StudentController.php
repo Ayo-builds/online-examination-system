@@ -98,4 +98,54 @@ class StudentController extends Controller
             'remaining' => strtotime($attempt['deadline_at']) - time(),  // seconds left
         ]);
     }
+
+    // POST /student/saveAnswer/{attemptId}  — AJAX, returns JSON
+    public function saveAnswer(string $attemptId = ''): void
+    {
+        // This is an AJAX endpoint: always answer in JSON, even on failure.
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->json(['ok' => false, 'error' => 'method'], 405);
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->json(['ok' => false, 'error' => 'csrf'], 403);
+        }
+
+        $attemptId = (int) $attemptId;
+        $studentId = (int) Auth::user()['id'];
+
+        $attemptModel = new Attempt();
+        $attempt = $attemptModel->findOwned($attemptId, $studentId);
+
+        if ($attempt === null) {
+            $this->json(['ok' => false, 'error' => 'not_found'], 404);
+        }
+
+        // Still open? (status + server deadline)
+        if ($attempt['status'] !== 'in_progress'
+            || strtotime($attempt['deadline_at']) <= time()) {
+            $this->json(['ok' => false, 'error' => 'closed'], 409);
+        }
+
+        $questionId = (int) ($_POST['question_id'] ?? 0);
+
+        // The question must be on THIS attempt's paper
+        if (!$attemptModel->questionInAttempt($attemptId, $questionId)) {
+            $this->json(['ok' => false, 'error' => 'bad_question'], 422);
+        }
+
+        $optionId  = isset($_POST['option_id']) && $_POST['option_id'] !== ''
+                        ? (int) $_POST['option_id'] : null;
+        $essayText = isset($_POST['essay_text'])
+                        ? trim((string) $_POST['essay_text']) : null;
+
+        // If an option was given, it must belong to this question
+        if ($optionId !== null
+            && !(new Question())->optionBelongsToQuestion($optionId, $questionId)) {
+            $this->json(['ok' => false, 'error' => 'bad_option'], 422);
+        }
+
+        $attemptModel->saveAnswer($attemptId, $questionId, $optionId, $essayText);
+
+        $this->json(['ok' => true, 'saved_at' => date('H:i:s')]);
+    }
 }

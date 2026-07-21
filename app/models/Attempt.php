@@ -151,4 +151,29 @@ class Attempt extends Model
             [$attemptId]
         );
     }
+
+    // Is this question part of this attempt's frozen paper?
+    public function questionInAttempt(int $attemptId, int $questionId): bool
+    {
+        $row = $this->query(
+            "SELECT 1 FROM attempt_questions
+             WHERE attempt_id = ? AND question_id = ? LIMIT 1",
+            [$attemptId, $questionId]
+        )->fetch();
+
+        return $row !== false;
+    }
+
+    // Save (insert or update) one answer. Upsert on the composite key.
+    public function saveAnswer(int $attemptId, int $questionId, ?int $optionId, ?string $essayText): void
+    {
+        $this->query(
+            "INSERT INTO attempt_answers (attempt_id, question_id, selected_option_id, essay_text)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                selected_option_id = VALUES(selected_option_id),
+                essay_text         = VALUES(essay_text)",
+            [$attemptId, $questionId, $optionId, $essayText]
+        );
+    }
 }

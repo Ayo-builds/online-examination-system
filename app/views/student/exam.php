@@ -73,28 +73,78 @@
         </form>
     </div>
 
-    <script>
-        // Server is the source of truth: this many seconds remained at page load.
+   <script>
         const remaining = <?= (int) $remaining ?>;
-        const deadline = Date.now() + remaining * 1000;
-        const timerEl = document.getElementById('timer');
+        const deadline  = Date.now() + remaining * 1000;
+        const timerEl   = document.getElementById('timer');
+        const form      = document.getElementById('exam-form');
+        const csrf      = form.querySelector('input[name="csrf_token"]').value;
+        const saveUrl   = '<?= BASE_URL ?>student/saveAnswer/<?= (int) $attempt['id'] ?>';
 
+        // ---- Timer ----
         function tick() {
             const secs = Math.max(0, Math.round((deadline - Date.now()) / 1000));
             const m = String(Math.floor(secs / 60)).padStart(2, '0');
             const s = String(secs % 60).padStart(2, '0');
             timerEl.textContent = m + ':' + s;
+            if (secs <= 60) timerEl.style.color = '#dc3545';
+            if (secs <= 0) form.submit();
+        }
+        tick();
+        setInterval(tick, 1000);
 
-            if (secs <= 60) timerEl.style.color = '#dc3545';   // last minute: red
+        // ---- Auto-save ----
+        async function saveAnswer(questionId, optionId, essayText) {
+            const body = new URLSearchParams();
+            body.append('csrf_token', csrf);
+            body.append('question_id', questionId);
+            if (optionId !== null)  body.append('option_id', optionId);
+            if (essayText !== null) body.append('essay_text', essayText);
 
-            if (secs <= 0) {
-                // Time's up — submit whatever's there
-                document.getElementById('exam-form').submit();
+            try {
+                const res = await fetch(saveUrl, { method: 'POST', body });
+                const data = await res.json();
+                if (data.ok) {
+                    flashSaved(questionId);
+                } else if (data.error === 'closed') {
+                    form.submit();   // deadline passed server-side — submit now
+                }
+            } catch (e) {
+                // Network blip — the answer stays in the DOM; next change retries.
             }
         }
 
-        tick();
-        setInterval(tick, 1000);
+        function flashSaved(questionId) {
+            const card = document.querySelector('[data-question="' + questionId + '"]')
+                             ?.closest('.question-card');
+            if (!card) return;
+            let tag = card.querySelector('.saved-tag');
+            if (!tag) {
+                tag = document.createElement('span');
+                tag.className = 'saved-tag';
+                tag.style.cssText = 'float:right; font-size:.75rem; color:#198754;';
+                card.querySelector('div').appendChild(tag);
+            }
+            tag.textContent = '✓ saved';
+        }
+
+        // MCQ radios: save immediately on change
+        document.querySelectorAll('input[type=radio][data-question]').forEach(r => {
+            r.addEventListener('change', () => {
+                saveAnswer(r.dataset.question, r.value, null);
+            });
+        });
+
+        // Essays: debounce — save ~1s after typing stops
+        document.querySelectorAll('textarea[data-question]').forEach(t => {
+            let timer = null;
+            t.addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    saveAnswer(t.dataset.question, null, t.value);
+                }, 1000);
+            });
+        });
     </script>
 </body>
 </html>
