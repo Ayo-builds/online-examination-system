@@ -149,6 +149,59 @@ class StudentController extends Controller
         $this->json(['ok' => true, 'saved_at' => date('H:i:s')]);
     }
 
+
+    // POST /student/logActivity/{attemptId}  — AJAX, returns JSON
+    public function logActivity(string $attemptId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->json(['ok' => false], 405);
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->json(['ok' => false], 403);
+        }
+
+        $attemptId = (int) $attemptId;
+        $studentId = (int) Auth::user()['id'];
+
+        $attemptModel = new Attempt();
+        $attempt = $attemptModel->findOwned($attemptId, $studentId);
+
+        if ($attempt === null) {
+            $this->json(['ok' => false], 404);
+        }
+        // Only log during a live attempt
+        if ($attempt['status'] !== 'in_progress') {
+            $this->json(['ok' => false, 'error' => 'closed'], 409);
+        }
+
+        // Whitelist the event types we accept
+        $allowed = ['tab_switch', 'fullscreen_exit', 'window_blur',
+                    'copy', 'paste', 'right_click', 'heartbeat_gap'];
+        $eventType = $_POST['event_type'] ?? '';
+
+        if (!in_array($eventType, $allowed, true)) {
+            $this->json(['ok' => false, 'error' => 'bad_event'], 422);
+        }
+
+        $logModel = new ActivityLog();
+        $logModel->record($attemptId, $eventType, ['ua' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
+
+        // Cross the threshold → flag the attempt for lecturer review
+        $counts = $logModel->countByType($attemptId);
+        $suspicious = 0;
+        foreach ($counts as $c) {
+            if (in_array($c['event_type'], ['tab_switch', 'window_blur', 'fullscreen_exit'], true)) {
+                $suspicious += (int) $c['total'];
+            }
+        }
+
+        if ($suspicious >= FLAG_THRESHOLD) {
+            $attemptModel->setFlagged($attemptId, true);
+        }
+
+        $this->json(['ok' => true, 'suspicious' => $suspicious, 'flagged' => $suspicious >= FLAG_THRESHOLD]);
+    }
+
     // POST /student/submitExam/{attemptId}
     public function submitExam(string $attemptId = ''): void
     {

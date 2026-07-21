@@ -15,7 +15,17 @@
             <div>
                 <strong><?= htmlspecialchars($attempt['course_code']) ?></strong> —
                 <?= htmlspecialchars($attempt['exam_title']) ?>
+
+                <button type="button" id="fs-btn"
+                    style="width:auto; margin:0; padding:6px 12px; font-size:.8rem;"
+                    onclick="document.documentElement.requestFullscreen && document.documentElement.requestFullscreen()">
+                Fullscreen
+            </button>
             </div>
+
+
+
+
             <div id="timer" style="font-size:1.2rem; font-weight:700; font-variant-numeric:tabular-nums;">
                 --:--
             </div>
@@ -145,6 +155,46 @@
                 }, 1000);
             });
         });
+
+
+      // ---------- Anti-cheat monitor ----------
+        const logUrl = '<?= BASE_URL ?>student/logActivity/<?= (int) $attempt['id'] ?>';
+
+        async function logEvent(type) {
+            const body = new URLSearchParams();
+            body.append('csrf_token', csrf);
+            body.append('event_type', type);
+            try { await fetch(logUrl, { method: 'POST', body }); } catch (e) {}
+        }
+
+        // Tab switch / minimise
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) logEvent('tab_switch');
+        });
+
+        // Window loses focus (alt-tab to another app)
+        window.addEventListener('blur', () => logEvent('window_blur'));
+
+        // Copy / paste / right-click
+        document.addEventListener('copy',  () => logEvent('copy'));
+        document.addEventListener('paste', () => logEvent('paste'));
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            logEvent('right_click');
+        });
+
+        // Fullscreen: notice if they leave it
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) logEvent('fullscreen_exit');
+        });
+
+        // Heartbeat: detect a frozen/backgrounded tab by an oversized interval gap
+        let lastPing = Date.now();
+        setInterval(() => {
+            const gap = Date.now() - lastPing;
+            lastPing = Date.now();
+            if (gap > 25000) logEvent('heartbeat_gap');
+        }, 15000);
     </script>
 </body>
 </html>

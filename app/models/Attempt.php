@@ -254,4 +254,12 @@ class Attempt extends Model
             throw $e;
         }
     }
+
+    public function setFlagged(int $attemptId, bool $flagged): void
+    {
+        $this->query(
+            "UPDATE exam_attempts SET is_flagged = ? WHERE id = ?",
+            [$flagged ? 1 : 0, $attemptId]
+        );
+    }
 }
