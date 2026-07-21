@@ -148,4 +148,55 @@ class StudentController extends Controller
 
         $this->json(['ok' => true, 'saved_at' => date('H:i:s')]);
     }
+
+    // POST /student/submitExam/{attemptId}
+    public function submitExam(string $attemptId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('student/dashboard');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('student/dashboard');
+        }
+
+        $attemptId = (int) $attemptId;
+        $studentId = (int) Auth::user()['id'];
+
+        $attemptModel = new Attempt();
+        $attempt = $attemptModel->findOwned($attemptId, $studentId);
+
+        if ($attempt === null) {
+            http_response_code(404);
+            exit('404 — Attempt not found.');
+        }
+
+        // Only an in-progress attempt can be submitted
+        if ($attempt['status'] === 'in_progress') {
+            // Deadline passed? Grade as auto_submitted; else a normal submit.
+            $status = strtotime($attempt['deadline_at']) <= time()
+                    ? 'auto_submitted' : 'submitted';
+            $attemptModel->submitAndGrade($attemptId, $status);
+        }
+
+        $this->redirect('student/result/' . $attemptId);
+    }
+
+    // GET /student/result/{attemptId}
+    public function result(string $attemptId = ''): void
+    {
+        $attemptId = (int) $attemptId;
+        $studentId = (int) Auth::user()['id'];
+
+        $attemptModel = new Attempt();
+        $attempt = $attemptModel->findOwned($attemptId, $studentId);
+
+        if ($attempt === null || $attempt['status'] === 'in_progress') {
+            $this->redirect('student/dashboard');
+        }
+
+        $this->view('student/result', [
+            'attempt' => $attempt,
+            'exam'    => (new Exam())->find((int) $attempt['exam_id']),
+        ]);
+    }
 }

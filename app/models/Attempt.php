@@ -142,14 +142,10 @@ class Attempt extends Model
     }
 
     // Mark an attempt auto-submitted (deadline reached). Grading happens in Step 35.
-    public function autoSubmit(int $attemptId): void
+  public function autoSubmit(int $attemptId): void
     {
-        $this->query(
-            "UPDATE exam_attempts
-             SET status = 'auto_submitted', submitted_at = NOW()
-             WHERE id = ? AND status = 'in_progress'",
-            [$attemptId]
-        );
+        // Auto-submit = grade with the auto_submitted status
+        $this->submitAndGrade($attemptId, 'auto_submitted');
     }
 
     // Is this question part of this attempt's frozen paper?
@@ -175,5 +171,87 @@ class Attempt extends Model
                 essay_text         = VALUES(essay_text)",
             [$attemptId, $questionId, $optionId, $essayText]
         );
+    }
+
+    // Grade all MCQs against frozen correct answers; flag essays for manual grading.
+    // Returns ['auto_score' => float, 'has_essays' => bool].
+    public function submitAndGrade(int $attemptId, string $finalStatus = 'submitted'): array
+    {
+        try {
+            $this->db->beginTransaction();
+
+            // Lock the attempt to in_progress → target status (idempotent guard)
+            $this->query(
+                "UPDATE exam_attempts
+                 SET status = ?, submitted_at = NOW()
+                 WHERE id = ? AND status = 'in_progress'",
+                [$finalStatus, $attemptId]
+            );
+
+            // Every question on this paper, with its type, marks, correct option,
+            // and the student's saved answer (if any)
+            $rows = $this->query(
+                "SELECT aq.question_id, q.question_type, q.marks,
+                        ans.selected_option_id, ans.essay_text,
+                        (SELECT id FROM question_options
+                          WHERE question_id = q.id AND is_correct = 1 LIMIT 1) AS correct_option_id
+                 FROM attempt_questions aq
+                 JOIN questions q ON q.id = aq.question_id
+                 LEFT JOIN attempt_answers ans
+                        ON ans.attempt_id = aq.attempt_id AND ans.question_id = aq.question_id
+                 WHERE aq.attempt_id = ?",
+                [$attemptId]
+            )->fetchAll();
+
+            $autoScore = 0.0;
+            $hasEssays = false;
+
+            $gradeStmt = $this->db->prepare(
+                "INSERT INTO attempt_answers
+                    (attempt_id, question_id, selected_option_id, essay_text, awarded_marks, graded_at)
+                 VALUES (?, ?, ?, ?, ?, NOW())
+                 ON DUPLICATE KEY UPDATE
+                    awarded_marks = VALUES(awarded_marks),
+                    graded_at     = VALUES(graded_at)"
+            );
+
+            foreach ($rows as $r) {
+                if ($r['question_type'] === 'mcq') {
+                    $correct = $r['selected_option_id'] !== null
+                            && (int) $r['selected_option_id'] === (int) $r['correct_option_id'];
+                    $awarded = $correct ? (float) $r['marks'] : 0.0;
+                    $autoScore += $awarded;
+
+                    $gradeStmt->execute([
+                        $attemptId, (int) $r['question_id'],
+                        $r['selected_option_id'] !== null ? (int) $r['selected_option_id'] : null,
+                        null, $awarded,
+                    ]);
+                } else {
+                    // Essay: leave awarded_marks NULL (ungraded), just ensure a row exists
+                    $hasEssays = true;
+                    $gradeStmt->execute([
+                        $attemptId, (int) $r['question_id'],
+                        null, $r['essay_text'], null,
+                    ]);
+                }
+            }
+
+            // Grading status + running total
+            $gradingStatus = $hasEssays ? 'partial' : 'complete';
+            $this->query(
+                "UPDATE exam_attempts
+                 SET total_score = ?, grading_status = ?
+                 WHERE id = ?",
+                [$autoScore, $gradingStatus, $attemptId]
+            );
+
+            $this->db->commit();
+            return ['auto_score' => $autoScore, 'has_essays' => $hasEssays];
+
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 }
