@@ -43,7 +43,8 @@
                                class="btn-small btn-success" style="text-decoration:none;">Continue</a>
 
                         <?php elseif ($e['attempt_status'] !== null): ?>
-                            <span style="color:#65676b; font-size:.88rem;">Completed</span>
+                            <a href="<?= BASE_URL ?>student/result/<?= (int) $e['attempt_id'] ?>"
+                               class="btn-small btn-success" style="text-decoration:none;">View result</a>
 
                         <?php elseif (!$inWindow && $now < $startTs): ?>
                             <span style="color:#65676b; font-size:.88rem;">Not open yet</span>

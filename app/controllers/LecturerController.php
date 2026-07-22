@@ -539,4 +539,79 @@ class LecturerController extends Controller
             'attempts' => (new Attempt())->forLecturer($lecturerId),
         ]);
     }
+
+    // GET /lecturer/gradeAttempt/{attemptId}
+    public function gradeAttempt(string $attemptId = ''): void
+    {
+        $attemptId  = (int) $attemptId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $attemptModel = new Attempt();
+        $attempt = $attemptModel->findForLecturer($attemptId, $lecturerId);
+
+        if ($attempt === null) {
+            http_response_code(404);
+            exit('404 — Attempt not found.');
+        }
+
+        $this->view('lecturer/grade_attempt', [
+            'attempt'   => $attempt,
+            'answers'   => $attemptModel->answersForGrading($attemptId),
+            'maxMarks'  => $attemptModel->maxMarks($attemptId),
+        ]);
+    }
+
+    // POST /lecturer/saveEssayGrade/{attemptId}
+    public function saveEssayGrade(string $attemptId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('lecturer/grading');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('lecturer/grading');
+        }
+
+        $attemptId  = (int) $attemptId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $attemptModel = new Attempt();
+        $attempt = $attemptModel->findForLecturer($attemptId, $lecturerId);
+
+        if ($attempt === null) {
+            http_response_code(404);
+            exit('404 — Attempt not found.');
+        }
+
+        $questionId = (int) ($_POST['question_id'] ?? 0);
+        $marks      = (float) ($_POST['marks'] ?? -1);
+
+        // The question must be an essay ON THIS attempt's paper, and marks in range
+        $q = $this->query_essayOnPaper($attemptId, $questionId);
+        if ($q === null) {
+            $this->redirect('lecturer/gradeAttempt/' . $attemptId);
+        }
+        if ($marks < 0 || $marks > (float) $q['marks']) {
+            $this->redirect('lecturer/gradeAttempt/' . $attemptId);
+        }
+
+        $attemptModel->gradeEssay($attemptId, $questionId, $marks);
+
+        $this->redirect('lecturer/gradeAttempt/' . $attemptId);
+    }
+
+    // Small helper: confirm the question is an essay on this attempt's snapshot
+    private function query_essayOnPaper(int $attemptId, int $questionId): ?array
+    {
+        $db = Database::getInstance();
+        $stmt = $db->prepare(
+            "SELECT q.marks
+             FROM attempt_questions aq
+             JOIN questions q ON q.id = aq.question_id
+             WHERE aq.attempt_id = ? AND aq.question_id = ? AND q.question_type = 'essay'
+             LIMIT 1"
+        );
+        $stmt->execute([$attemptId, $questionId]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
 }

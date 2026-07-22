@@ -303,4 +303,103 @@ class Attempt extends Model
             [$flagged ? 1 : 0, $attemptId]
         );
     }
+
+    // Full answer detail for grading: each question, the student's answer,
+    // the correct option (for MCQs), and marks awarded so far.
+    public function answersForGrading(int $attemptId): array
+    {
+        $rows = $this->query(
+            "SELECT aq.question_id, aq.display_order,
+                    q.question_type, q.question_text, q.marks,
+                    ans.selected_option_id, ans.essay_text, ans.awarded_marks
+             FROM attempt_questions aq
+             JOIN questions q ON q.id = aq.question_id
+             LEFT JOIN attempt_answers ans
+                    ON ans.attempt_id = aq.attempt_id AND ans.question_id = aq.question_id
+             WHERE aq.attempt_id = ?
+             ORDER BY aq.display_order",
+            [$attemptId]
+        )->fetchAll();
+
+        foreach ($rows as &$r) {
+            $r['options'] = [];
+            if ($r['question_type'] === 'mcq') {
+                $r['options'] = $this->query(
+                    "SELECT id, option_text, is_correct
+                     FROM question_options WHERE question_id = ?",
+                    [(int) $r['question_id']]
+                )->fetchAll();
+            }
+        }
+        unset($r);
+
+        return $rows;
+    }
+
+    // Award marks to ONE essay answer, then recompute the attempt total atomically.
+    public function gradeEssay(int $attemptId, int $questionId, float $marks): void
+    {
+        try {
+            $this->db->beginTransaction();
+
+            // 1. Set this essay's awarded marks
+            $this->query(
+                "UPDATE attempt_answers
+                 SET awarded_marks = ?, graded_at = NOW()
+                 WHERE attempt_id = ? AND question_id = ?",
+                [$marks, $attemptId, $questionId]
+            );
+
+            // 2. Recompute total from ALL awarded marks (never incremental)
+            $sumRow = $this->query(
+                "SELECT COALESCE(SUM(awarded_marks), 0) AS total
+                 FROM attempt_answers
+                 WHERE attempt_id = ? AND awarded_marks IS NOT NULL",
+                [$attemptId]
+            )->fetch();
+            $total = (float) $sumRow['total'];
+
+            // 3. Any essays still ungraded?
+            $pending = $this->query(
+                "SELECT 1
+                 FROM attempt_questions aq
+                 JOIN questions q ON q.id = aq.question_id
+                 LEFT JOIN attempt_answers ans
+                        ON ans.attempt_id = aq.attempt_id AND ans.question_id = aq.question_id
+                 WHERE aq.attempt_id = ?
+                   AND q.question_type = 'essay'
+                   AND (ans.awarded_marks IS NULL)
+                 LIMIT 1",
+                [$attemptId]
+            )->fetch();
+
+            $status = $pending === false ? 'complete' : 'partial';
+
+            // 4. Save total + grading status
+            $this->query(
+                "UPDATE exam_attempts SET total_score = ?, grading_status = ? WHERE id = ?",
+                [$total, $status, $attemptId]
+            );
+
+            $this->db->commit();
+
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    // Max possible marks for this attempt (sum of its questions' marks)
+    public function maxMarks(int $attemptId): float
+    {
+        $row = $this->query(
+            "SELECT COALESCE(SUM(q.marks), 0) AS max_marks
+             FROM attempt_questions aq
+             JOIN questions q ON q.id = aq.question_id
+             WHERE aq.attempt_id = ?",
+            [$attemptId]
+        )->fetch();
+
+        return (float) $row['max_marks'];
+    }
 }
