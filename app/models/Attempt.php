@@ -255,6 +255,47 @@ class Attempt extends Model
         }
     }
 
+    // All finished attempts for exams owned by this lecturer
+    public function forLecturer(int $lecturerId): array
+    {
+        return $this->query(
+            "SELECT a.id, a.status, a.total_score, a.grading_status, a.is_flagged,
+                    a.submitted_at,
+                    u.full_name AS student_name,
+                    e.title AS exam_title, e.pass_mark,
+                    c.course_code
+             FROM exam_attempts a
+             JOIN exams e   ON e.id = a.exam_id
+             JOIN courses c ON c.id = e.course_id
+             JOIN users u   ON u.id = a.student_id
+             WHERE c.lecturer_id = ?
+               AND a.status IN ('submitted', 'auto_submitted')
+             ORDER BY (a.grading_status = 'partial') DESC,
+                      a.is_flagged DESC,
+                      a.submitted_at DESC",
+            [$lecturerId]
+        )->fetchAll();
+    }
+
+    // One attempt, but only if it belongs to an exam this lecturer owns
+    public function findForLecturer(int $attemptId, int $lecturerId): ?array
+    {
+        $row = $this->query(
+            "SELECT a.*, u.full_name AS student_name,
+                    e.title AS exam_title, e.pass_mark,
+                    c.course_code, c.id AS course_id
+             FROM exam_attempts a
+             JOIN exams e   ON e.id = a.exam_id
+             JOIN courses c ON c.id = e.course_id
+             JOIN users u   ON u.id = a.student_id
+             WHERE a.id = ? AND c.lecturer_id = ?
+             LIMIT 1",
+            [$attemptId, $lecturerId]
+        )->fetch();
+
+        return $row ?: null;
+    }
+
     public function setFlagged(int $attemptId, bool $flagged): void
     {
         $this->query(

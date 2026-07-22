@@ -529,4 +529,14 @@ class LecturerController extends Controller
 
         $this->redirect('lecturer/exams/' . $courseId);
     }
+
+    // GET /lecturer/grading
+    public function grading(): void
+    {
+        $lecturerId = (int) Auth::user()['id'];
+
+        $this->view('lecturer/grading', [
+            'attempts' => (new Attempt())->forLecturer($lecturerId),
+        ]);
+    }
 }

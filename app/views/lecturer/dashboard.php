@@ -9,6 +9,9 @@
     <div style="padding: 30px; max-width: 900px; margin: 0 auto;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h1>My Courses</h1>
+            <p style="margin-top:8px;">
+            <a href="<?= BASE_URL ?>lecturer/grading">→ Grading queue</a>
+        </p>
             <p>
                 <?= htmlspecialchars($user['name']) ?> ·
                 <a href="<?= BASE_URL ?>auth/logout">Log out</a>
