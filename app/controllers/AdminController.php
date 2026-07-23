@@ -237,4 +237,15 @@ class AdminController extends Controller
 
         $this->redirect('admin/enrollments/' . $courseId);
     }
+    public function analytics(): void
+    {
+        $analytics = new Analytics();
+
+        $this->view('admin/analytics', [
+            'counts'    => $analytics->systemCounts(),
+            'integrity' => $analytics->integritySignals(),
+            'events'    => $analytics->eventBreakdown(),
+            'courses'   => $analytics->courseSummary(),
+        ]);
+    }
 }
