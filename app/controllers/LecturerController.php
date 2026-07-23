@@ -661,4 +661,33 @@ class LecturerController extends Controller
 
         $this->redirect('lecturer/activity/' . $attemptId);
     }
+
+    // GET /lecturer/analytics/{courseId}/{examId}
+    public function analytics(string $courseId = '', string $examId = ''): void
+    {
+        $courseId   = (int) $courseId;
+        $examId     = (int) $examId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $course = (new Course())->findOwned($courseId, $lecturerId);
+        if ($course === null) {
+            http_response_code(404);
+            exit('404 — Course not found.');
+        }
+
+        $examModel = new Exam();
+        $exam = $examModel->findInCourse($examId, $courseId);
+        if ($exam === null) {
+            http_response_code(404);
+            exit('404 — Exam not found.');
+        }
+
+        $this->view('lecturer/analytics', [
+            'course' => $course,
+            'exam'   => $exam,
+            'stats'  => $examModel->statistics($examId),
+            'scores' => $examModel->scores($examId),
+            'items'  => (new Question())->itemAnalysis($examId),
+        ]);
+    }
 }

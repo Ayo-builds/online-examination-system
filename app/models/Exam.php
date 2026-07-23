@@ -74,4 +74,38 @@ class Exam extends Model
             [$studentId, $studentId]
         )->fetchAll();
     }
+
+    // Headline stats for one exam
+    public function statistics(int $examId): array
+    {
+        $row = $this->query(
+            "SELECT COUNT(*)                             AS attempts,
+                    AVG(a.total_score)                   AS avg_score,
+                    MIN(a.total_score)                   AS min_score,
+                    MAX(a.total_score)                   AS max_score,
+                    SUM(a.is_flagged)                    AS flagged_count,
+                    SUM(a.status = 'auto_submitted')     AS auto_submitted_count,
+                    SUM(a.grading_status = 'partial')    AS pending_grading
+             FROM exam_attempts a
+             WHERE a.exam_id = ?
+               AND a.status IN ('submitted', 'auto_submitted')",
+            [$examId]
+        )->fetch();
+
+        return $row ?: [];
+    }
+
+    // Every finished attempt's score, for the distribution
+    public function scores(int $examId): array
+    {
+        return $this->query(
+            "SELECT a.total_score, a.grading_status, u.full_name
+             FROM exam_attempts a
+             JOIN users u ON u.id = a.student_id
+             WHERE a.exam_id = ?
+               AND a.status IN ('submitted', 'auto_submitted')
+             ORDER BY a.total_score DESC",
+            [$examId]
+        )->fetchAll();
+    }
 }

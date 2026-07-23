@@ -41,6 +41,7 @@
                     <td><?= (int) $e['pool_count'] ?> / <?= (int) $e['questions_per_attempt'] ?> needed</td>
                     <td>
                         <a href="<?= BASE_URL ?>lecturer/examPool/<?= (int) $course['id'] ?>/<?= (int) $e['id'] ?>">Pool</a>
+                        · <a href="<?= BASE_URL ?>lecturer/analytics/<?= (int) $course['id'] ?>/<?= (int) $e['id'] ?>">Analytics</a>
                         <?php if ($e['status'] === 'published'): ?>
                         <form method="POST"
                               action="<?= BASE_URL ?>lecturer/closeExam/<?= (int) $course['id'] ?>/<?= (int) $e['id'] ?>"

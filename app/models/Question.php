@@ -130,4 +130,28 @@ class Question extends Model
 
         return $row !== false;
     }
+
+    // Per-question performance across all attempts of one exam
+    public function itemAnalysis(int $examId): array
+    {
+        return $this->query(
+            "SELECT q.id, q.question_type, q.question_text, q.marks,
+                    COUNT(ans.question_id)                                   AS times_answered,
+                    SUM(CASE WHEN ans.awarded_marks >= q.marks THEN 1 ELSE 0 END) AS full_marks_count,
+                    AVG(ans.awarded_marks)                                   AS avg_awarded
+             FROM exam_question_pool p
+             JOIN questions q ON q.id = p.question_id
+             LEFT JOIN attempt_questions aq ON aq.question_id = q.id
+             LEFT JOIN exam_attempts a
+                    ON a.id = aq.attempt_id AND a.exam_id = ?
+                       AND a.status IN ('submitted','auto_submitted')
+             LEFT JOIN attempt_answers ans
+                    ON ans.attempt_id = aq.attempt_id AND ans.question_id = q.id
+             WHERE p.exam_id = ?
+             GROUP BY q.id, q.question_type, q.question_text, q.marks
+             ORDER BY (SUM(CASE WHEN ans.awarded_marks >= q.marks THEN 1 ELSE 0 END) /
+                       NULLIF(COUNT(ans.question_id), 0)) ASC",
+            [$examId, $examId]
+        )->fetchAll();
+    }
 }
