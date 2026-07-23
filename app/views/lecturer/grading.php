@@ -53,6 +53,10 @@
                         <a href="<?= BASE_URL ?>lecturer/gradeAttempt/<?= (int) $a['id'] ?>">
                             <?= $a['grading_status'] === 'partial' ? 'Grade' : 'Review' ?>
                         </a>
+                        <?php if ((int) $a['is_flagged'] === 1): ?>
+                            · <a href="<?= BASE_URL ?>lecturer/activity/<?= (int) $a['id'] ?>"
+                                 style="color:#dc3545;">Activity ⚑</a>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>

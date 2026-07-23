@@ -614,4 +614,51 @@ class LecturerController extends Controller
         $row = $stmt->fetch();
         return $row ?: null;
     }
+
+    // GET /lecturer/activity/{attemptId}
+    public function activity(string $attemptId = ''): void
+    {
+        $attemptId  = (int) $attemptId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $attempt = (new Attempt())->findForLecturer($attemptId, $lecturerId);
+        if ($attempt === null) {
+            http_response_code(404);
+            exit('404 — Attempt not found.');
+        }
+
+        $logModel = new ActivityLog();
+
+        $this->view('lecturer/activity', [
+            'attempt' => $attempt,
+            'counts'  => $logModel->countByType($attemptId),
+            'events'  => $logModel->forAttempt($attemptId),
+        ]);
+    }
+
+    // POST /lecturer/reviewFlag/{attemptId}
+    public function reviewFlag(string $attemptId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('lecturer/grading');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('lecturer/grading');
+        }
+
+        $attemptId  = (int) $attemptId;
+        $lecturerId = (int) Auth::user()['id'];
+
+        $attempt = (new Attempt())->findForLecturer($attemptId, $lecturerId);
+        if ($attempt === null) {
+            http_response_code(404);
+            exit('404 — Attempt not found.');
+        }
+
+        // 'clear' = decided it's innocent; 'keep' = confirm suspicion
+        $decision = $_POST['decision'] ?? '';
+        (new Attempt())->reviewFlag($attemptId, $decision === 'keep');
+
+        $this->redirect('lecturer/activity/' . $attemptId);
+    }
 }

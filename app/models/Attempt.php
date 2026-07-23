@@ -402,4 +402,12 @@ class Attempt extends Model
 
         return (float) $row['max_marks'];
     }
+
+    public function reviewFlag(int $attemptId, bool $keepFlagged): void
+    {
+        $this->query(
+            "UPDATE exam_attempts SET is_flagged = ? WHERE id = ?",
+            [$keepFlagged ? 1 : 0, $attemptId]
+        );
+    }
 }
