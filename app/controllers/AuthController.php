@@ -30,10 +30,23 @@ class AuthController extends Controller
             return;
         }
 
+          // Locked out?
+        $lockRemaining = Auth::lockoutRemaining($email);
+        if ($lockRemaining > 0) {
+            $mins = ceil($lockRemaining / 60);
+            $this->view('auth/login', [
+                'error' => "Too many failed attempts. Try again in {$mins} minute(s).",
+            ]);
+            return;
+        }
+
         if (!Auth::attempt($email, $password)) {
+            Auth::recordFailure($email);
             $this->view('auth/login', ['error' => 'Invalid credentials.']);
             return;
         }
+        Auth::clearFailures($email);
+        $this->redirect($this->homeFor(Auth::role()));
 
         $this->redirect($this->homeFor(Auth::role()));
     }

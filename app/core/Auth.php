@@ -63,4 +63,55 @@ class Auth
 
         session_destroy();
     }
+
+    // Is this email currently locked out? Returns seconds remaining, or 0 if clear.
+    public static function lockoutRemaining(string $email): int
+    {
+        $row = Database::getInstance()->prepare(
+            "SELECT locked_until FROM login_attempts WHERE email = ? LIMIT 1"
+        );
+        $row->execute([$email]);
+        $result = $row->fetch();
+
+        if ($result === false || $result['locked_until'] === null) {
+            return 0;
+        }
+
+        $remaining = strtotime($result['locked_until']) - time();
+        return $remaining > 0 ? $remaining : 0;
+    }
+
+    // Record a failed attempt; lock the account if the threshold is crossed.
+    public static function recordFailure(string $email): void
+    {
+        $db = Database::getInstance();
+
+        $stmt = $db->prepare("SELECT attempts FROM login_attempts WHERE email = ? LIMIT 1");
+        $stmt->execute([$email]);
+        $row = $stmt->fetch();
+
+        $attempts = ($row === false ? 0 : (int) $row['attempts']) + 1;
+
+        $lockedUntil = null;
+        if ($attempts >= MAX_LOGIN_ATTEMPTS) {
+            $lockedUntil = date('Y-m-d H:i:s', time() + LOGIN_LOCKOUT_MINUTES * 60);
+        }
+
+        $db->prepare(
+            "INSERT INTO login_attempts (email, attempts, locked_until, last_attempt)
+             VALUES (?, ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE
+                attempts = VALUES(attempts),
+                locked_until = VALUES(locked_until),
+                last_attempt = NOW()"
+        )->execute([$email, $attempts, $lockedUntil]);
+    }
+
+    // Clear the record on successful login.
+    public static function clearFailures(string $email): void
+    {
+        Database::getInstance()
+            ->prepare("DELETE FROM login_attempts WHERE email = ?")
+            ->execute([$email]);
+    }
 }

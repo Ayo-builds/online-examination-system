@@ -125,3 +125,13 @@ CREATE TABLE activity_logs (
     INDEX idx_attempt (attempt_id),
     FOREIGN KEY (attempt_id) REFERENCES exam_attempts(id) ON DELETE CASCADE
 );
+
+
+
+CREATE TABLE login_attempts (
+    email VARCHAR(150) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    locked_until DATETIME NULL,
+    last_attempt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (email)
+);
