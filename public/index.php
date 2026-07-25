@@ -3,6 +3,12 @@ declare(strict_types=1);
 
 session_start();
 
+// ---- Security headers (sent on every response) ----
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('X-XSS-Protection: 0');
+
 // APP_ROOT = the exam-system folder itself (one level UP from /public)
 define('APP_ROOT', dirname(__DIR__));
 

@@ -28,9 +28,8 @@ class Router
         call_user_func_array([$controller, $method], $params);
     }
 
-    private function abort404(): void
+   private function abort404(): void
     {
-        http_response_code(404);
-        exit('404 — Page not found');
+        ErrorPage::show(404, 'Page not found.');
     }
 }

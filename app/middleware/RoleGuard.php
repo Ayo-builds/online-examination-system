@@ -12,8 +12,7 @@ class RoleGuard
 
         // Gate 2: must hold one of the allowed roles
         if (!in_array(Auth::role(), $allowedRoles, true)) {
-            http_response_code(403);
-            exit('403 — You do not have permission to access this page.');
+            ErrorPage::show(403, 'You do not have permission to access this page.');
         }
     }
 }
