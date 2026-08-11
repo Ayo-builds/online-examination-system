@@ -1,5 +1,7 @@
 # Online Examination System
 
+**🔗 [Live demo](https://exams.ayoelebiyo.com)** · Log in with the demo accounts below.
+
 A production-style online examination platform built from scratch in **PHP (PDO) and MySQL** using a **hand-rolled MVC architecture** — no framework. Supports timed exams, randomised question banks, automatic and manual grading, real-time anti-cheat monitoring, and analytics for three distinct user roles.
 
 > Built to demonstrate full-stack fundamentals: secure authentication, relational data modelling, database transactions, server-authoritative logic, and defence-in-depth security — the things frameworks usually hide.
