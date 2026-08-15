@@ -1,3 +1,4 @@
 config/config.php
 logs/
 seed*.php
+node_modules/

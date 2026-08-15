@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "21st": {
+      "type": "http",
+      "url": "https://21st.dev/api/mcp",
+      "headers": {
+        "x-api-key": "${API_KEY_21ST}"
+      }
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ]
+    },
+    "unsplash": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@hanoak/unsplash-mcp-server"
+      ],
+      "env": {
+        "UNSPLASH_ACCESS_KEY": "${UNSPLASH_ACCESS_KEY}",
+        "UNSPLASH_APP_NAME": "${UNSPLASH_APP_NAME}"
+      }
+    }
+  }
+}
