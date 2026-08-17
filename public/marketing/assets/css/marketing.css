@@ -69,14 +69,14 @@
   --mono:    "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
 
   /* Scale */
-  --t-hero:  clamp(2.5rem, 5.6vw, 4.15rem);
+  --t-hero:  clamp(2.2rem, 6.5vw, 4.15rem);
   --t-h2:    clamp(1.85rem, 3.6vw, 2.8rem);
   --t-h3:    clamp(1.2rem, 1.6vw, 1.4rem);
   --t-lead:  clamp(1.05rem, 1.35vw, 1.2rem);
   --t-micro: 0.7rem;
 
   /* Rhythm */
-  --gutter:  clamp(1.15rem, 4vw, 2.5rem);
+  --gutter:  clamp(1.25rem, 4vw, 2.5rem);
   --bay:     clamp(3.75rem, 8vw, 7rem);
   --measure: 1180px;
 
@@ -208,6 +208,7 @@ a { color: inherit; }
   text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
+  min-height: 2.75rem;   /* 44px — comfortable tap target at every size */
   transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 .btn svg { width: 1rem; height: 1rem; flex: none; }
@@ -259,6 +260,7 @@ a { color: inherit; }
   text-decoration: none;
   color: var(--paper);
   margin-right: auto;
+  min-height: 2.75rem;
 }
 .wordmark__mark { color: var(--amber); }
 .wordmark__mark svg { width: 1.35rem; height: 1.35rem; }
@@ -280,7 +282,7 @@ a { color: inherit; }
   font-weight: 500;
   color: var(--paper-dim);
   text-decoration: none;
-  padding-block: 0.25rem;
+  padding-block: 0.45rem;
   border-bottom: 1px solid transparent;
   transition: color 0.18s ease, border-color 0.18s ease;
 }
@@ -290,47 +292,48 @@ a { color: inherit; }
 
 /* ---------- Hero --------------------------------------------------------- */
 
+/* Below 62rem the hero STACKS: an ink copy block, then the photograph in its
+   own 3:2 frame. Cropping a wide exam hall into a tall phone-shaped slot
+   renders the room unreadable, and text over it needs a wash so heavy the
+   photo is wasted. The full-bleed composite is restored at 62rem, where the
+   frame is wide enough for both. */
+
 .hero {
   position: relative;
   background: var(--ink);
   color: var(--paper);
   overflow: hidden;
   isolation: isolate;
+  display: flex;
+  flex-direction: column;
 }
 
 .hero__media {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
+  position: relative;
+  order: 2;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  max-height: 46vh;
+  border-top: 1px solid var(--line-dark);
 }
 .hero__media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 62% 50%;
+  object-position: 58% 50%;
 }
 
-.hero__wash {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(178deg, rgba(19, 26, 46, 0.85) 0%, rgba(19, 26, 46, 0) 32%),
-    linear-gradient(96deg,
-      rgba(19, 26, 46, 0.97) 0%,
-      rgba(19, 26, 46, 0.93) 34%,
-      rgba(19, 26, 46, 0.68) 58%,
-      rgba(19, 26, 46, 0.34) 100%);
-}
+.hero__wash { display: none; }
 
 .hero__inner {
+  order: 1;
   width: 100%;
   max-width: var(--measure);
   margin-inline: auto;
-  padding: clamp(3.5rem, 8vw, 6.5rem) var(--gutter) clamp(3rem, 6vw, 5rem);
+  padding: clamp(2.75rem, 7vw, 6.5rem) var(--gutter) clamp(2.5rem, 5vw, 5rem);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: clamp(2.5rem, 5vw, 4rem);
+  gap: clamp(2rem, 5vw, 4rem);
   align-items: end;
 }
 
@@ -402,8 +405,8 @@ a { color: inherit; }
 /* ---------- Signature: the invigilator's clock --------------------------- */
 
 .clock {
-  justify-self: start;
-  width: min(21rem, 100%);
+  justify-self: stretch;
+  width: 100%;
   background: rgba(11, 16, 28, 0.82);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -484,8 +487,8 @@ a { color: inherit; }
 
 .roles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: clamp(1.5rem, 3vw, 2.5rem);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
 }
 
 .role {
@@ -578,8 +581,8 @@ a { color: inherit; }
 
 .process {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
-  gap: clamp(1.5rem, 3vw, 2.25rem);
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(1.75rem, 3vw, 2.25rem);
   counter-reset: step;
 }
 
@@ -734,8 +737,8 @@ a { color: inherit; }
 }
 .footer__note { margin-top: 0.3rem; max-width: 34ch; }
 
-.footer__links { display: flex; flex-wrap: wrap; gap: 0.6rem 1.4rem; }
-.footer__links a { text-decoration: none; }
+.footer__links { display: flex; flex-wrap: wrap; gap: 0.15rem 1.4rem; }
+.footer__links a { text-decoration: none; padding-block: 0.4rem; }
 .footer__links a:hover { color: var(--paper); }
 .footer__links a:focus-visible { box-shadow: var(--ring-on-ink); }
 
@@ -972,7 +975,7 @@ a { color: inherit; }
   color: var(--amber);
   text-decoration: none;
   border-bottom: 1px solid rgba(232, 163, 61, 0.4);
-  padding-bottom: 0.2rem;
+  padding: 0.3rem 0;
   overflow-wrap: anywhere;
   transition: border-color 0.18s ease;
 }
@@ -998,6 +1001,46 @@ a { color: inherit; }
 
 /* ---------- Wider viewports --------------------------------------------- */
 
+/* ---- Phones: nav wraps to two rows, actions go full width -------------- */
+
+@media (max-width: 44rem) {
+  .nav__inner { row-gap: 0.55rem; }
+  /* min-width:0 + ellipsis lets the wordmark shrink so "Sign in" stays on
+     row one instead of being pushed onto a third row of its own. */
+  .wordmark { min-width: 0; }
+  .wordmark__text {
+    font-size: 0.95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .nav__links {
+    order: 3;
+    width: 100%;
+    gap: 1rem;
+    justify-content: space-between;
+  }
+
+  .hero__meta { gap: 0.45rem 1.1rem; }
+
+  /* Two side-by-side buttons at this width give cramped tap targets. */
+  .hero__actions { width: 100%; }
+  .hero__actions .btn { flex: 1 1 100%; }
+
+  .ledger__row { grid-template-columns: 4.6rem 1fr; }
+  .ledger__row .tag { grid-column: 2; justify-self: start; }
+
+  /* Time and actor share a line; the event gets the full width below. */
+  .tl { grid-template-columns: minmax(0, 1fr) auto; row-gap: 0.15rem; }
+  .tl__at   { grid-column: 1; grid-row: 1; }
+  .tl__who  { grid-column: 2; grid-row: 1; text-align: right; }
+  .tl__what { grid-column: 1 / -1; grid-row: 2; }
+
+  .stage { gap: 0.5rem; }
+}
+
+/* ---- Small tablets ----------------------------------------------------- */
+
 @media (min-width: 40rem) {
   .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .spec__row { grid-template-columns: 10.5rem minmax(0, 1fr); align-items: baseline; }
@@ -1005,30 +1048,65 @@ a { color: inherit; }
   .tl__who { text-align: right; }
 }
 
+/* Between tablet and desktop, three-up and four-up grids leave orphans, so
+   pair them and let the odd one span. */
+@media (min-width: 40rem) and (max-width: 61.99rem) {
+  .roles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .roles .role:nth-child(3) { grid-column: 1 / -1; }
+  .process { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* The phone measures leave the copy hugging the left edge and the clock
+     stretched across the full width. Give the text more room and hold the
+     clock to a panel width so the two read as one column. */
+  .hero__copy { max-width: 46ch; }
+  .hero__lead { max-width: 52ch; }
+  .clock { width: min(24rem, 100%); }
+  .hero__media { max-height: 40vh; }
+  .hero__media img { object-position: 58% 58%; }
+}
+
+/* ---- Desktop: restore the full-bleed composite hero -------------------- */
+
 @media (min-width: 62rem) {
+  .hero { display: block; }
+  .hero__media {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    order: 0;
+    aspect-ratio: auto;
+    max-height: none;
+    border-top: 0;
+  }
+  .hero__media img { object-position: 62% 50%; }
+  .hero__wash {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      linear-gradient(178deg, rgba(19, 26, 46, 0.85) 0%, rgba(19, 26, 46, 0) 32%),
+      linear-gradient(96deg,
+        rgba(19, 26, 46, 0.97) 0%,
+        rgba(19, 26, 46, 0.93) 34%,
+        rgba(19, 26, 46, 0.68) 58%,
+        rgba(19, 26, 46, 0.34) 100%);
+  }
   .hero__inner {
     grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
     padding-block: clamp(5rem, 9vw, 8rem) clamp(4rem, 7vw, 6rem);
   }
   .hero__copy { max-width: none; }
-  .clock { justify-self: end; }
+  .clock { justify-self: end; width: min(21rem, 100%); }
+
+  .roles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(1.5rem, 3vw, 2.5rem); }
+  .process { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .integrity { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); }
   .split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .principle { grid-template-columns: 11rem minmax(0, 1fr); }
   .stage { grid-template-columns: 5.5rem minmax(0, 1fr); }
   .footer__inner { grid-template-columns: 1.2fr 1fr 1.1fr; align-items: start; }
   .footer__legal { text-align: right; }
-}
-
-@media (max-width: 44rem) {
-  .nav__inner { row-gap: 0.75rem; }
-  .nav__links { order: 3; width: 100%; gap: 1.25rem; }
-  .hero__wash {
-    background:
-      linear-gradient(180deg, rgba(19, 26, 46, 0.95) 0%, rgba(19, 26, 46, 0.9) 55%, rgba(19, 26, 46, 0.72) 100%);
-  }
-  .ledger__row { grid-template-columns: 4.6rem 1fr; }
-  .ledger__row .tag { grid-column: 2; justify-self: start; }
 }
 
 /* ---------- Reduced motion ---------------------------------------------- */
