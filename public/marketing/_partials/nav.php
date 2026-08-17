@@ -5,10 +5,12 @@
  * While the landing page is the only marketing page, these point at sections on
  * it. They become cross-page links once About / How it works / Contact exist.
  */
+$landing = url('marketing/');
+
 $nav_links = [
-    ['href' => '#roles',     'label' => 'Who it is for'],
-    ['href' => '#features',  'label' => 'What it does'],
-    ['href' => '#process',   'label' => 'How it works'],
+    ['href' => $landing . '#roles',    'label' => 'Who it is for'],
+    ['href' => $landing . '#features', 'label' => 'What it does'],
+    ['href' => $landing . '#process',  'label' => 'How it works'],
 ];
 ?>
 <header class="nav">
