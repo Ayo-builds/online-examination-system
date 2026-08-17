@@ -54,11 +54,22 @@ class Auth
     {
         $_SESSION = [];
 
-        // Kill the session cookie in the browser too
+        // Kill the session cookie in the browser too.
+        // Uses the options-array signature (PHP 7.3+) rather than the positional
+        // one, which has no samesite parameter — so the delete-cookie now carries
+        // the same attributes as the cookie it is replacing. Browsers match on
+        // name/path/domain when expiring, so this worked before; it just emitted
+        // a cookie whose attributes disagreed with the original.
         if (ini_get('session.use_cookies')) {
             $p = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
-                $p['path'], $p['domain'], $p['secure'], $p['httponly']);
+            setcookie(session_name(), '', [
+                'expires'  => time() - 42000,
+                'path'     => $p['path'],
+                'domain'   => $p['domain'],
+                'secure'   => $p['secure'],
+                'httponly' => $p['httponly'],
+                'samesite' => $p['samesite'] ?: 'Lax',
+            ]);
         }
 
         session_destroy();
