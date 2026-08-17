@@ -76,11 +76,13 @@ require __DIR__ . '/_partials/nav.php';
           <div class="principle__text">
             <h3 class="principle__title">The clock belongs to the server.</h3>
             <p class="principle__body">
-              A countdown the browser owns is a countdown a candidate can edit. Timing is
-              decided server-side and the interface only reports it, which is why closing
-              the tab, reloading, or changing the system clock buys nobody a single extra
-              minute. A short grace window at submission absorbs network lag, because
-              punishing a slow connection is not the same as enforcing a deadline.
+              A countdown the browser owns is a countdown a candidate can edit. The
+              deadline is written by the database the moment an attempt starts, and the
+              interface only reports it — which is why closing the tab, reloading, or
+              changing the system clock buys nobody a single extra minute. A submission
+              that arrives late is still graded rather than discarded; it is simply
+              recorded as auto-submitted, because losing someone's work to network lag
+              is not the same as enforcing a deadline.
             </p>
           </div>
         </article>

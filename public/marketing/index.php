@@ -152,13 +152,14 @@ require __DIR__ . '/_partials/nav.php';
           </div>
           <h3 class="feature__title">Timed delivery</h3>
           <p class="feature__body">
-            Every paper runs against a clock the server owns, not the browser. Closing
-            the tab or changing the system time does not buy a candidate extra minutes.
+            Every paper runs against a clock the server owns, not the browser. The
+            deadline is written by the database when the attempt starts, so closing the
+            tab or changing the system time does not buy a candidate extra minutes.
           </p>
           <ul class="feature__list">
             <li>Server-authoritative countdown</li>
-            <li>Grace window at submit for network lag</li>
-            <li>Auto-submit when the clock expires</li>
+            <li>Deadline computed by the database at start</li>
+            <li>Auto-submit once the clock expires</li>
           </ul>
         </article>
 
@@ -176,8 +177,9 @@ require __DIR__ . '/_partials/nav.php';
             to look at.
           </p>
           <ul class="feature__list">
-            <li>Focus loss and tab-switch events</li>
+            <li>Focus, tab-switch, copy and paste logged</li>
             <li>Automatic flag past the event threshold</li>
+            <li>Randomised paper drawn per attempt</li>
             <li>Full timeline retained per attempt</li>
           </ul>
         </article>
