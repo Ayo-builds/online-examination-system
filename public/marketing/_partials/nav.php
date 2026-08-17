@@ -1,17 +1,15 @@
 <?php
 /**
  * Site navigation.
- *
- * While the landing page is the only marketing page, these point at sections on
- * it. They become cross-page links once About / How it works / Contact exist.
+ * $page_key marks the current page so it can carry aria-current.
  */
-$landing = url('marketing/');
-
 $nav_links = [
-    ['href' => $landing . '#roles',    'label' => 'Who it is for'],
-    ['href' => $landing . '#features', 'label' => 'What it does'],
-    ['href' => $landing . '#process',  'label' => 'How it works'],
+    'about'        => ['href' => url('marketing/about.php'),         'label' => 'About'],
+    'how-it-works' => ['href' => url('marketing/how-it-works.php'),  'label' => 'How it works'],
+    'contact'      => ['href' => url('marketing/contact.php'),       'label' => 'Contact'],
 ];
+
+$current = $page_key ?? '';
 ?>
 <header class="nav">
   <div class="nav__inner">
@@ -27,8 +25,8 @@ $nav_links = [
     </a>
 
     <nav class="nav__links" aria-label="Primary">
-      <?php foreach ($nav_links as $link): ?>
-        <a href="<?= e($link['href']) ?>"><?= e($link['label']) ?></a>
+      <?php foreach ($nav_links as $key => $link): ?>
+        <a href="<?= e($link['href']) ?>"<?= $key === $current ? ' aria-current="page"' : '' ?>><?= e($link['label']) ?></a>
       <?php endforeach; ?>
     </nav>
 

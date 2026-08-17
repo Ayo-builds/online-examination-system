@@ -7,9 +7,10 @@
     </div>
 
     <nav class="footer__links" aria-label="Footer">
-      <a href="#roles">Who it is for</a>
-      <a href="#features">What it does</a>
-      <a href="#process">How it works</a>
+      <a href="<?= e(url('marketing/')) ?>">Home</a>
+      <a href="<?= e(url('marketing/about.php')) ?>">About</a>
+      <a href="<?= e(url('marketing/how-it-works.php')) ?>">How it works</a>
+      <a href="<?= e(url('marketing/contact.php')) ?>">Contact</a>
       <a href="<?= e(url(LOGIN_URL_PATH)) ?>">Sign in</a>
     </nav>
 

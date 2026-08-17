@@ -286,6 +286,7 @@ a { color: inherit; }
 }
 .nav__links a:hover { color: var(--paper); border-bottom-color: var(--amber); }
 .nav__links a:focus-visible { box-shadow: var(--ring-on-ink); }
+.nav__links a[aria-current="page"] { color: var(--paper); border-bottom-color: var(--amber); }
 
 /* ---------- Hero --------------------------------------------------------- */
 
@@ -961,6 +962,22 @@ a { color: inherit; }
   text-transform: uppercase;
   color: var(--paper-dim);
 }
+
+/* ---------- Contact address ---------------------------------------------- */
+
+.addr {
+  align-self: flex-start;
+  font-family: var(--mono);
+  font-size: clamp(0.95rem, 1.9vw, 1.25rem);
+  color: var(--amber);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(232, 163, 61, 0.4);
+  padding-bottom: 0.2rem;
+  overflow-wrap: anywhere;
+  transition: border-color 0.18s ease;
+}
+.addr:hover { border-bottom-color: var(--amber); }
+.addr:focus-visible { box-shadow: var(--ring-on-ink); }
 
 /* ---------- Page-load sequence ------------------------------------------ */
 
