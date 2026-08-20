@@ -2,78 +2,110 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Exam Pool — <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
-    <div style="padding: 30px; max-width: 700px; margin: 0 auto;">
-        <p><a href="<?= BASE_URL ?>lecturer/exams/<?= (int) $course['id'] ?>">&larr; Exams</a></p>
-        <h1><?= htmlspecialchars($exam['title']) ?> — Question Pool</h1>
-        <p style="color:#65676b;">
-            Status: <strong><?= htmlspecialchars($exam['status']) ?></strong> ·
-            Draws <?= (int) $exam['questions_per_attempt'] ?> question(s) per attempt ·
-            Pool currently holds <?= count($poolIds) ?>
-        </p>
-        <?php if (!empty($errors)): ?>
-            <div class="alert alert-error" style="margin-top:12px;">
-                <?php foreach ($errors as $e): ?>
-                    <div><?= htmlspecialchars($e) ?></div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
+<?php $nav_current = 'dashboard'; require APP_ROOT . '/app/views/_partials/topbar.php'; ?>
 
-        <?php if (empty($questions)): ?>
-            <p style="margin-top:16px;">
-                The question bank is empty —
-                <a href="<?= BASE_URL ?>lecturer/questions/<?= (int) $course['id'] ?>">add questions</a> first.
+<main class="shell shell--tight">
+
+    <a class="backlink" href="<?= BASE_URL ?>lecturer/exams/<?= (int) $course['id'] ?>">&larr; Exams</a>
+
+    <div class="page__head">
+        <div>
+            <p class="eyebrow"><?= htmlspecialchars($course['course_code']) ?></p>
+            <h1 class="page__title"><?= htmlspecialchars($exam['title']) ?></h1>
+            <p class="page__lead">Question pool</p>
+        </div>
+    </div>
+
+    <div class="grid grid--3">
+        <div class="stat">
+            <span class="stat__label">Status</span>
+            <span class="stat__value stat__value--text"><?= htmlspecialchars($exam['status']) ?></span>
+        </div>
+        <div class="stat">
+            <span class="stat__label">Drawn per attempt</span>
+            <span class="stat__value"><?= (int) $exam['questions_per_attempt'] ?></span>
+        </div>
+        <div class="stat<?= count($poolIds) >= (int) $exam['questions_per_attempt'] ? ' stat--ok' : ' stat--danger' ?>">
+            <span class="stat__label">In pool</span>
+            <span class="stat__value"><?= count($poolIds) ?></span>
+        </div>
+    </div>
+
+    <?php if (!empty($errors)): ?>
+        <div class="alert alert-error stack-md">
+            <?php foreach ($errors as $e): ?>
+                <div><?= htmlspecialchars($e) ?></div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (empty($questions)): ?>
+        <div class="empty">
+            <p>The question bank is empty.</p>
+            <p class="small stack-sm">
+                <a href="<?= BASE_URL ?>lecturer/questions/<?= (int) $course['id'] ?>">Add questions</a> before building a pool.
             </p>
-        <?php elseif ($exam['status'] !== 'draft'): ?>
-            <p style="margin-top:16px; color:#65676b;">
-                This exam is <?= htmlspecialchars($exam['status']) ?> — the pool is locked.
-            </p>
-            <ul style="margin-top:10px; list-style:none;">
-                <?php foreach ($questions as $q): ?>
-                    <?php if (in_array((int) $q['id'], $poolIds, true)): ?>
-                    <li style="padding:8px 12px; margin-top:6px; background:#fff; border:1px solid #eef0f2; border-radius:6px;">
-                        <strong><?= htmlspecialchars(strtoupper($q['question_type'])) ?></strong> ·
-                        <?= htmlspecialchars(mb_strimwidth($q['question_text'], 0, 80, '…')) ?>
-                    </li>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </ul>
-        <?php else: ?>
+        </div>
+
+    <?php elseif ($exam['status'] !== 'draft'): ?>
+        <div class="alert alert--info stack-md">
+            This exam is <?= htmlspecialchars($exam['status']) ?> — the pool is locked so that
+            attempts already in flight keep grading against the questions they were drawn from.
+        </div>
+
+        <div class="picklist">
+            <?php foreach ($questions as $q): ?>
+                <?php if (in_array((int) $q['id'], $poolIds, true)): ?>
+                <div class="picklist__row">
+                    <span class="tag"><?= htmlspecialchars(strtoupper($q['question_type'])) ?></span>
+                    <span><?= htmlspecialchars(mb_strimwidth($q['question_text'], 0, 80, '…')) ?></span>
+                </div>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+
+    <?php else: ?>
         <form method="POST" action="<?= BASE_URL ?>lecturer/savePool/<?= (int) $course['id'] ?>/<?= (int) $exam['id'] ?>">
             <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
 
-            <div style="margin-top:14px;">
+            <h2 class="section">Choose the questions</h2>
+
+            <div class="picklist">
                 <?php foreach ($questions as $q): ?>
-                <label style="display:flex; gap:10px; align-items:flex-start;
-                              padding:10px 12px; margin-top:6px; background:#fff;
-                              border:1px solid #eef0f2; border-radius:6px;
-                              font-weight:normal; cursor:pointer;">
+                <label class="picklist__row picklist__row--pick">
                     <input type="checkbox" name="question_ids[]"
                            value="<?= (int) $q['id'] ?>"
-                           style="width:auto; margin-top:3px;"
                            <?= in_array((int) $q['id'], $poolIds, true) ? 'checked' : '' ?>>
-                    <span>
-                        <strong><?= htmlspecialchars(strtoupper($q['question_type'])) ?></strong>
-                        (<?= htmlspecialchars($q['marks']) ?> mk) ·
-                        <?= htmlspecialchars(mb_strimwidth($q['question_text'], 0, 80, '…')) ?>
-                    </span>
+                    <span class="tag"><?= htmlspecialchars(strtoupper($q['question_type'])) ?></span>
+                    <span class="mono small"><?= htmlspecialchars($q['marks']) ?> mk</span>
+                    <span><?= htmlspecialchars(mb_strimwidth($q['question_text'], 0, 80, '…')) ?></span>
                 </label>
                 <?php endforeach; ?>
             </div>
 
-            <button type="submit">Save pool</button>
+            <div class="form-actions">
+                <button type="submit" class="btn btn--secondary">Save pool</button>
+            </div>
         </form>
+
+        <hr class="divider">
+
         <form method="POST"
               action="<?= BASE_URL ?>lecturer/publishExam/<?= (int) $course['id'] ?>/<?= (int) $exam['id'] ?>"
-              onsubmit="return confirm('Publish this exam? The pool will be locked and students will be able to start it during the window.');"
-              style="margin-top:14px;">
+              onsubmit="return confirm('Publish this exam? The pool will be locked and students will be able to start it during the window.');">
             <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
-            <button type="submit" class="btn-small btn-success">Publish exam</button>
+            <p class="small muted">Publishing locks the pool and opens the exam for its window.</p>
+            <div class="form-actions">
+                <button type="submit" class="btn btn--primary">Publish exam</button>
+            </div>
         </form>
-        <?php endif; ?>
-    </div>
+    <?php endif; ?>
+
+</main>
 </body>
 </html>

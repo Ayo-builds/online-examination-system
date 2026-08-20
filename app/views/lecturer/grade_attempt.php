@@ -2,81 +2,98 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grade Attempt — <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
-    <div style="max-width: 760px; margin: 0 auto; padding: 30px;">
-        <p><a href="<?= BASE_URL ?>lecturer/grading">&larr; Grading queue</a></p>
+<?php $nav_current = 'grading'; require APP_ROOT . '/app/views/_partials/topbar.php'; ?>
 
-        <h1><?= htmlspecialchars($attempt['student_name']) ?></h1>
-        <p style="color:#65676b;">
-            <?= htmlspecialchars($attempt['course_code']) ?> — <?= htmlspecialchars($attempt['exam_title']) ?>
-            · Submitted <?= htmlspecialchars($attempt['submitted_at']) ?>
-        </p>
+<main class="shell shell--tight">
 
-        <div style="background:#fff; border:1px solid #eef0f2; border-radius:8px;
-                    padding:14px 18px; margin-top:14px; display:flex; justify-content:space-between;">
-            <span>Score:
-                <strong><?= $attempt['total_score'] === null ? '—' : htmlspecialchars($attempt['total_score']) ?></strong>
-                / <?= htmlspecialchars($maxMarks) ?>
-            </span>
-            <span>Status:
-                <strong style="color:<?= $attempt['grading_status'] === 'complete' ? '#198754' : '#b26a00' ?>;">
-                    <?= htmlspecialchars($attempt['grading_status']) ?>
-                </strong>
-            </span>
+    <a class="backlink" href="<?= BASE_URL ?>lecturer/grading">&larr; Grading queue</a>
+
+    <div class="page__head">
+        <div>
+            <p class="eyebrow">
+                <?= htmlspecialchars($attempt['course_code']) ?>
+                &middot; <?= htmlspecialchars($attempt['exam_title']) ?>
+            </p>
+            <h1 class="page__title"><?= htmlspecialchars($attempt['student_name']) ?></h1>
+            <p class="page__lead small">Submitted <?= htmlspecialchars($attempt['submitted_at']) ?></p>
         </div>
-
-        <?php foreach ($answers as $ans): ?>
-        <div class="question-card" style="background:#fff; border:1px solid #eef0f2;
-             border-radius:8px; padding:18px 20px; margin-top:16px;">
-            <div style="display:flex; justify-content:space-between; font-size:.82rem; color:#65676b;">
-                <span>Q<?= (int) $ans['display_order'] ?> · <?= htmlspecialchars(strtoupper($ans['question_type'])) ?></span>
-                <span><?= htmlspecialchars($ans['marks']) ?> mark(s)</span>
-            </div>
-            <p style="margin-top:8px; font-size:1rem;"><?= nl2br(htmlspecialchars($ans['question_text'])) ?></p>
-
-            <?php if ($ans['question_type'] === 'mcq'): ?>
-                <ul style="margin-top:10px; list-style:none;">
-                    <?php foreach ($ans['options'] as $o): ?>
-                        <?php
-                            $isChosen  = (int) $ans['selected_option_id'] === (int) $o['id'];
-                            $isCorrect = (int) $o['is_correct'] === 1;
-                        ?>
-                        <li style="padding:8px 12px; margin-top:4px; border-radius:6px;
-                                   border:1px solid <?= $isCorrect ? '#198754' : '#eef0f2' ?>;
-                                   background:<?= $isChosen ? ($isCorrect ? '#e6f4ea' : '#fdecea') : '#fff' ?>;">
-                            <?= htmlspecialchars($o['option_text']) ?>
-                            <?= $isCorrect ? ' ✓ correct' : '' ?>
-                            <?= $isChosen ? ' — student chose this' : '' ?>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-                <p style="margin-top:8px; font-size:.85rem; color:#65676b;">
-                    Auto-awarded: <?= $ans['awarded_marks'] === null ? '0' : htmlspecialchars($ans['awarded_marks']) ?> mark(s)
-                </p>
-
-            <?php else: ?>
-                <div style="margin-top:10px; padding:12px; background:#f7f8fa;
-                            border-radius:6px; white-space:pre-wrap; font-size:.95rem;">
-<?= htmlspecialchars($ans['essay_text'] ?? '') ?: '<em style="color:#999;">No answer submitted</em>' ?>
-                </div>
-
-                <form method="POST" action="<?= BASE_URL ?>lecturer/saveEssayGrade/<?= (int) $attempt['id'] ?>"
-                      style="margin-top:12px; display:flex; gap:10px; align-items:center;">
-                    <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
-                    <input type="hidden" name="question_id" value="<?= (int) $ans['question_id'] ?>">
-                    <label style="margin:0;">Award:</label>
-                    <input type="number" name="marks" step="0.5" min="0" max="<?= htmlspecialchars($ans['marks']) ?>"
-                           value="<?= $ans['awarded_marks'] !== null ? htmlspecialchars($ans['awarded_marks']) : '' ?>"
-                           style="width:100px;" required>
-                    <span style="color:#65676b;">/ <?= htmlspecialchars($ans['marks']) ?></span>
-                    <button type="submit" class="btn-small btn-success">Save grade</button>
-                </form>
-            <?php endif; ?>
-        </div>
-        <?php endforeach; ?>
     </div>
+
+    <div class="grid grid--2">
+        <div class="stat">
+            <span class="stat__label">Score</span>
+            <span class="stat__value">
+                <?= $attempt['total_score'] === null ? '&mdash;' : htmlspecialchars($attempt['total_score']) ?>
+                <span class="stat__unit">/ <?= htmlspecialchars($maxMarks) ?></span>
+            </span>
+        </div>
+        <div class="stat">
+            <span class="stat__label">Grading</span>
+            <span class="stat__value stat__value--text">
+                <?php if ($attempt['grading_status'] === 'complete'): ?>
+                    <span class="tag tag--ok">Complete</span>
+                <?php else: ?>
+                    <span class="tag tag--warn"><?= htmlspecialchars($attempt['grading_status']) ?></span>
+                <?php endif; ?>
+            </span>
+        </div>
+    </div>
+
+    <?php foreach ($answers as $ans): ?>
+    <div class="question-card stack-md">
+        <div class="question-card__meta">
+            <span>Q<?= (int) $ans['display_order'] ?> &middot; <?= htmlspecialchars(strtoupper($ans['question_type'])) ?></span>
+            <span><?= htmlspecialchars($ans['marks']) ?> mark(s)</span>
+        </div>
+
+        <p class="question-card__text"><?= nl2br(htmlspecialchars($ans['question_text'])) ?></p>
+
+        <?php if ($ans['question_type'] === 'mcq'): ?>
+            <div class="picklist">
+                <?php foreach ($ans['options'] as $o): ?>
+                <?php
+                    $isChosen  = (int) $ans['selected_option_id'] === (int) $o['id'];
+                    $isCorrect = (int) $o['is_correct'] === 1;
+                    $rowClass  = $isCorrect ? ' picklist__row--correct'
+                               : ($isChosen ? ' picklist__row--wrong' : '');
+                ?>
+                <div class="picklist__row<?= $rowClass ?>">
+                    <span><?= htmlspecialchars($o['option_text']) ?></span>
+                    <?php if ($isCorrect): ?><span class="tag tag--ok">Correct</span><?php endif; ?>
+                    <?php if ($isChosen): ?><span class="tag<?= $isCorrect ? ' tag--ok' : ' tag--flag' ?>">Student chose</span><?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <p class="help">
+                Auto-awarded: <?= $ans['awarded_marks'] === null ? '0' : htmlspecialchars($ans['awarded_marks']) ?> mark(s)
+            </p>
+
+        <?php else: ?>
+            <div class="essay-answer">
+<?= htmlspecialchars($ans['essay_text'] ?? '') ?: '<em class="muted">No answer submitted</em>' ?>
+            </div>
+
+            <form method="POST" action="<?= BASE_URL ?>lecturer/saveEssayGrade/<?= (int) $attempt['id'] ?>"
+                  class="award">
+                <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
+                <input type="hidden" name="question_id" value="<?= (int) $ans['question_id'] ?>">
+                <label for="marks-<?= (int) $ans['question_id'] ?>">Award</label>
+                <input type="number" id="marks-<?= (int) $ans['question_id'] ?>" name="marks"
+                       step="0.5" min="0" max="<?= htmlspecialchars($ans['marks']) ?>"
+                       value="<?= $ans['awarded_marks'] !== null ? htmlspecialchars($ans['awarded_marks']) : '' ?>"
+                       required>
+                <span class="muted">/ <?= htmlspecialchars($ans['marks']) ?></span>
+                <button type="submit" class="btn btn--ok btn--sm">Save grade</button>
+            </form>
+        <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
+
+</main>
 </body>
 </html>

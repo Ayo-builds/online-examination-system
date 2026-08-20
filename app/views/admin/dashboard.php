@@ -2,19 +2,40 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin — <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
-    <div style="padding: 30px;">
-        <h1>Admin Dashboard</h1>
-        <p>Welcome, <?= htmlspecialchars($user['name']) ?> — role: <strong><?= htmlspecialchars($user['role']) ?></strong></p>
-        <p style="margin-top:14px;">
-            <a href="<?= BASE_URL ?>admin/users">Users</a> ·
-            <a href="<?= BASE_URL ?>admin/courses">Courses</a> ·
-            <a href="<?= BASE_URL ?>admin/analytics">System analytics</a>
-        </p>
-        <p><a href="<?= BASE_URL ?>auth/logout">Log out</a></p>
+<?php $nav_current = 'dashboard'; require APP_ROOT . '/app/views/_partials/topbar.php'; ?>
+
+<main class="shell shell--narrow">
+
+    <div class="page__head">
+        <div>
+            <p class="eyebrow">Admin</p>
+            <h1 class="page__title">Dashboard</h1>
+            <p class="page__lead">
+                Signed in as <?= htmlspecialchars($user['name']) ?>.
+            </p>
+        </div>
     </div>
+
+    <div class="grid grid--3">
+        <a class="tile" href="<?= BASE_URL ?>admin/users">
+            <span class="tile__title">Users</span>
+            <span class="tile__body">Create accounts, suspend or reactivate people.</span>
+        </a>
+        <a class="tile" href="<?= BASE_URL ?>admin/courses">
+            <span class="tile__title">Courses</span>
+            <span class="tile__body">Set up courses, assign lecturers, manage enrolments.</span>
+        </a>
+        <a class="tile" href="<?= BASE_URL ?>admin/analytics">
+            <span class="tile__title">System analytics</span>
+            <span class="tile__body">Usage across every course, and exam integrity rates.</span>
+        </a>
+    </div>
+
+</main>
 </body>
 </html>

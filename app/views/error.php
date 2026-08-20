@@ -7,12 +7,12 @@
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body class="auth-page">
-    <div class="auth-card" style="text-align:center;">
-        <h1 style="font-size:3rem; margin-bottom:8px;"><?= (int) $code ?></h1>
+    <main class="auth-card center">
+        <p class="error-code"><?= (int) $code ?></p>
         <p class="auth-subtitle"><?= htmlspecialchars($message) ?></p>
-        <p style="margin-top:20px;">
+        <p class="stack-md">
             <a href="<?= BASE_URL ?>">Return home</a>
         </p>
-    </div>
+    </main>
 </body>
 </html>

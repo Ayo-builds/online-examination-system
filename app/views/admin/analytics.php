@@ -2,100 +2,119 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Analytics — <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
-    <div style="max-width: 950px; margin: 0 auto; padding: 30px;">
-        <p><a href="<?= BASE_URL ?>admin/dashboard">&larr; Dashboard</a></p>
-        <h1>System Analytics</h1>
+<?php $nav_current = 'analytics'; require APP_ROOT . '/app/views/_partials/topbar.php'; ?>
 
-        <!-- Counts -->
-        <h2 style="margin-top:20px; font-size:1.05rem;">Overview</h2>
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr));
-                    gap:12px; margin-top:10px;">
-            <?php
-            $cards = [
-                'Active students'   => (int) $counts['students'],
-                'Active lecturers'  => (int) $counts['lecturers'],
-                'Suspended users'   => (int) $counts['suspended'],
-                'Courses'           => (int) $counts['courses'],
-                'Questions in bank' => (int) $counts['questions'],
-                'Published exams'   => (int) $counts['published_exams'],
-                'Draft exams'       => (int) $counts['draft_exams'],
-                'Completed attempts'=> (int) $counts['completed_attempts'],
-                'Exams in progress' => (int) $counts['live_attempts'],
-            ];
-            foreach ($cards as $label => $value): ?>
-            <div style="background:#fff; border:1px solid #eef0f2; border-radius:8px; padding:14px;">
-                <div style="font-size:.78rem; color:#65676b;"><?= htmlspecialchars($label) ?></div>
-                <div style="font-size:1.5rem; font-weight:700; margin-top:4px;"><?= $value ?></div>
-            </div>
-            <?php endforeach; ?>
+<main class="shell">
+
+    <a class="backlink" href="<?= BASE_URL ?>admin/dashboard">&larr; Dashboard</a>
+
+    <div class="page__head">
+        <div>
+            <p class="eyebrow">Admin</p>
+            <h1 class="page__title">System analytics</h1>
         </div>
+    </div>
 
-        <!-- Integrity -->
-        <h2 style="margin-top:28px; font-size:1.05rem;">Exam integrity</h2>
+    <h2 class="section">Overview</h2>
+    <div class="grid grid--3">
         <?php
-            $total    = (int) ($integrity['total'] ?? 0);
-            $flagged  = (int) ($integrity['flagged'] ?? 0);
-            $timedOut = (int) ($integrity['timed_out'] ?? 0);
-            $flagRate = $total > 0 ? round($flagged / $total * 100) : 0;
-            $toRate   = $total > 0 ? round($timedOut / $total * 100) : 0;
-        ?>
-        <div style="background:#fff; border:1px solid #eef0f2; border-radius:8px;
-                    padding:16px 18px; margin-top:10px;">
-            <p style="font-size:.92rem;">
-                <strong><?= $flagged ?></strong> of <strong><?= $total ?></strong> completed attempts flagged
-                (<span style="color:<?= $flagRate > 25 ? '#dc3545' : '#65676b' ?>;"><?= $flagRate ?>%</span>)
-            </p>
-            <p style="font-size:.92rem; margin-top:6px;">
-                <strong><?= $timedOut ?></strong> ran out of time
-                (<span style="color:<?= $toRate > 30 ? '#b26a00' : '#65676b' ?>;"><?= $toRate ?>%</span>)
-                <?php if ($toRate > 30): ?>
-                    — a high rate may mean exams are too long for their duration.
-                <?php endif; ?>
-            </p>
-            <p style="font-size:.92rem; margin-top:6px;">
-                <strong><?= (int) ($integrity['total_events'] ?? 0) ?></strong> activity events logged in total
-            </p>
+        $cards = [
+            'Active students'    => (int) $counts['students'],
+            'Active lecturers'   => (int) $counts['lecturers'],
+            'Suspended users'    => (int) $counts['suspended'],
+            'Courses'            => (int) $counts['courses'],
+            'Questions in bank'  => (int) $counts['questions'],
+            'Published exams'    => (int) $counts['published_exams'],
+            'Draft exams'        => (int) $counts['draft_exams'],
+            'Completed attempts' => (int) $counts['completed_attempts'],
+            'Exams in progress'  => (int) $counts['live_attempts'],
+        ];
+        foreach ($cards as $label => $value): ?>
+        <div class="stat">
+            <span class="stat__label"><?= htmlspecialchars($label) ?></span>
+            <span class="stat__value"><?= $value ?></span>
         </div>
+        <?php endforeach; ?>
+    </div>
 
-        <!-- Event breakdown -->
-        <?php if (!empty($events)): ?>
-        <h2 style="margin-top:28px; font-size:1.05rem;">Activity events</h2>
+    <h2 class="section">Exam integrity</h2>
+    <?php
+        $total    = (int) ($integrity['total'] ?? 0);
+        $flagged  = (int) ($integrity['flagged'] ?? 0);
+        $timedOut = (int) ($integrity['timed_out'] ?? 0);
+        $flagRate = $total > 0 ? round($flagged / $total * 100) : 0;
+        $toRate   = $total > 0 ? round($timedOut / $total * 100) : 0;
+    ?>
+    <div class="grid grid--3">
+        <div class="stat<?= $flagRate > 25 ? ' stat--danger' : '' ?>">
+            <span class="stat__label">Flagged attempts</span>
+            <span class="stat__value"><?= $flagRate ?>%</span>
+            <span class="stat__note"><?= $flagged ?> of <?= $total ?> completed</span>
+        </div>
+        <div class="stat<?= $toRate > 30 ? ' stat--warn' : '' ?>">
+            <span class="stat__label">Ran out of time</span>
+            <span class="stat__value"><?= $toRate ?>%</span>
+            <span class="stat__note">
+                <?= $timedOut ?> of <?= $total ?><?= $toRate > 30 ? ' — exams may be too long for their duration' : '' ?>
+            </span>
+        </div>
+        <div class="stat">
+            <span class="stat__label">Activity events</span>
+            <span class="stat__value"><?= (int) ($integrity['total_events'] ?? 0) ?></span>
+            <span class="stat__note">logged in total</span>
+        </div>
+    </div>
+
+    <?php if (!empty($events)): ?>
+    <h2 class="section">Activity events</h2>
+    <div class="table-wrap">
         <table class="data-table">
-            <thead><tr><th>Event type</th><th>Occurrences</th></tr></thead>
+            <thead><tr><th>Event type</th><th class="right">Occurrences</th></tr></thead>
             <tbody>
                 <?php foreach ($events as $e): ?>
                 <tr>
                     <td><?= htmlspecialchars(str_replace('_', ' ', $e['event_type'])) ?></td>
-                    <td><?= (int) $e['total'] ?></td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-        <?php endif; ?>
-
-        <!-- Courses -->
-        <h2 style="margin-top:28px; font-size:1.05rem;">Courses</h2>
-        <table class="data-table">
-            <thead>
-                <tr><th>Code</th><th>Title</th><th>Lecturer</th><th>Students</th><th>Exams</th><th>Attempts</th></tr>
-            </thead>
-            <tbody>
-                <?php foreach ($courses as $c): ?>
-                <tr>
-                    <td><?= htmlspecialchars($c['course_code']) ?></td>
-                    <td><?= htmlspecialchars($c['title']) ?></td>
-                    <td><?= htmlspecialchars($c['lecturer_name']) ?></td>
-                    <td><?= (int) $c['students'] ?></td>
-                    <td><?= (int) $c['exams'] ?></td>
-                    <td><?= (int) $c['attempts'] ?></td>
+                    <td class="num"><?= (int) $e['total'] ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
+    <?php endif; ?>
+
+    <h2 class="section">Courses</h2>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Title</th>
+                    <th>Lecturer</th>
+                    <th class="right">Students</th>
+                    <th class="right">Exams</th>
+                    <th class="right">Attempts</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($courses as $c): ?>
+                <tr>
+                    <td class="code"><?= htmlspecialchars($c['course_code']) ?></td>
+                    <td><?= htmlspecialchars($c['title']) ?></td>
+                    <td><?= htmlspecialchars($c['lecturer_name']) ?></td>
+                    <td class="num"><?= (int) $c['students'] ?></td>
+                    <td class="num"><?= (int) $c['exams'] ?></td>
+                    <td class="num"><?= (int) $c['attempts'] ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+</main>
 </body>
 </html>

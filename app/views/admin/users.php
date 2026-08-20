@@ -2,14 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Users — <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
-    <div style="padding: 30px; max-width: 900px; margin: 0 auto;">
-        <p><a href="<?= BASE_URL ?>admin/dashboard">&larr; Dashboard</a></p>
-        <h1>Users</h1>
+<?php $nav_current = 'users'; require APP_ROOT . '/app/views/_partials/topbar.php'; ?>
 
+<main class="shell shell--narrow">
+
+    <a class="backlink" href="<?= BASE_URL ?>admin/dashboard">&larr; Dashboard</a>
+
+    <div class="page__head">
+        <div>
+            <p class="eyebrow">Admin</p>
+            <h1 class="page__title">Users</h1>
+        </div>
+        <div class="page__actions">
+            <a class="btn btn--primary btn--sm" href="<?= BASE_URL ?>admin/createUser">Create user</a>
+        </div>
+    </div>
+
+    <div class="table-wrap">
         <table class="data-table">
             <thead>
                 <tr>
@@ -25,22 +39,26 @@
                 <?php foreach ($users as $u): ?>
                 <tr>
                     <td><?= htmlspecialchars($u['full_name']) ?></td>
-                    <td><?= htmlspecialchars($u['email']) ?></td>
-                    <td><?= htmlspecialchars($u['role']) ?></td>
-                    <td><?= htmlspecialchars($u['status']) ?></td>
-                    <td><?= htmlspecialchars($u['created_at']) ?></td>
-                        <td>
+                    <td class="small"><?= htmlspecialchars($u['email']) ?></td>
+                    <td><span class="tag"><?= htmlspecialchars($u['role']) ?></span></td>
+                    <td>
+                        <?php if ($u['status'] === 'active'): ?>
+                            <span class="tag tag--ok">Active</span>
+                        <?php else: ?>
+                            <span class="tag tag--flag">Suspended</span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="small nowrap"><?= htmlspecialchars($u['created_at']) ?></td>
+                    <td class="actions">
                         <?php if ((int) $u['id'] !== (int) Auth::user()['id']): ?>
-                        <form method="POST"
-                              action="<?= BASE_URL ?>admin/toggleStatus/<?= (int) $u['id'] ?>"
-                              style="display:inline;">
+                        <form method="POST" action="<?= BASE_URL ?>admin/toggleStatus/<?= (int) $u['id'] ?>">
                             <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
-                            <button type="submit" class="btn-small <?= $u['status'] === 'active' ? 'btn-danger' : 'btn-success' ?>">
+                            <button type="submit" class="btn btn--sm <?= $u['status'] === 'active' ? 'btn--danger-quiet' : 'btn--ok' ?>">
                                 <?= $u['status'] === 'active' ? 'Suspend' : 'Activate' ?>
                             </button>
                         </form>
                         <?php else: ?>
-                            <span style="color:#65676b; font-size:.85rem;">(you)</span>
+                            <span class="muted small">(you)</span>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -48,5 +66,7 @@
             </tbody>
         </table>
     </div>
+
+</main>
 </body>
 </html>

@@ -2,36 +2,47 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Enrollments — <?= APP_NAME ?></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enrolments — <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
-    <div style="padding: 30px; max-width: 700px; margin: 0 auto;">
-        <p><a href="<?= BASE_URL ?>admin/courses">&larr; Courses</a></p>
-        <h1><?= htmlspecialchars($course['course_code']) ?> — Enrollments</h1>
-        <p style="color:#65676b;"><?= htmlspecialchars($course['title']) ?></p>
+<?php $nav_current = 'courses'; require APP_ROOT . '/app/views/_partials/topbar.php'; ?>
 
-        <h2 style="margin-top:24px; font-size:1.05rem;">Enroll a student</h2>
-        <?php if (empty($available)): ?>
-            <p>No available students to enroll.</p>
-        <?php else: ?>
-        <form method="POST" action="<?= BASE_URL ?>admin/enroll/<?= (int) $course['id'] ?>"
-              style="display:flex; gap:10px; align-items:center; margin-top:8px;">
-            <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
-            <select name="student_id" required style="flex:1;">
-                <option value="">— Select student —</option>
-                <?php foreach ($available as $s): ?>
-                <option value="<?= (int) $s['id'] ?>"><?= htmlspecialchars($s['full_name']) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <button type="submit" class="btn-small btn-success" style="white-space:nowrap;">Enroll</button>
-        </form>
-        <?php endif; ?>
+<main class="shell shell--tight">
 
-        <h2 style="margin-top:28px; font-size:1.05rem;">Enrolled students</h2>
-        <?php if (empty($enrolled)): ?>
-            <p>No students enrolled yet.</p>
-        <?php else: ?>
+    <a class="backlink" href="<?= BASE_URL ?>admin/courses">&larr; Courses</a>
+
+    <div class="page__head">
+        <div>
+            <p class="eyebrow"><?= htmlspecialchars($course['course_code']) ?></p>
+            <h1 class="page__title">Enrolments</h1>
+            <p class="page__lead"><?= htmlspecialchars($course['title']) ?></p>
+        </div>
+    </div>
+
+    <h2 class="section">Enrol a student</h2>
+    <?php if (empty($available)): ?>
+        <p class="muted small">Every active student is already enrolled in this course.</p>
+    <?php else: ?>
+    <form method="POST" action="<?= BASE_URL ?>admin/enroll/<?= (int) $course['id'] ?>" class="inline-form">
+        <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
+        <label class="sr-only" for="student_id">Student</label>
+        <select id="student_id" name="student_id" required>
+            <option value="">&mdash; Select student &mdash;</option>
+            <?php foreach ($available as $s): ?>
+            <option value="<?= (int) $s['id'] ?>"><?= htmlspecialchars($s['full_name']) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <button type="submit" class="btn btn--ok btn--sm">Enrol</button>
+    </form>
+    <?php endif; ?>
+
+    <h2 class="section">Enrolled students</h2>
+    <?php if (empty($enrolled)): ?>
+        <div class="empty"><p>No students enrolled yet.</p></div>
+    <?php else: ?>
+    <div class="table-wrap">
         <table class="data-table">
             <thead>
                 <tr>
@@ -45,21 +56,28 @@
                 <?php foreach ($enrolled as $s): ?>
                 <tr>
                     <td><?= htmlspecialchars($s['full_name']) ?></td>
-                    <td><?= htmlspecialchars($s['email']) ?></td>
-                    <td><?= htmlspecialchars($s['status']) ?></td>
+                    <td class="small"><?= htmlspecialchars($s['email']) ?></td>
                     <td>
-                        <form method="POST" action="<?= BASE_URL ?>admin/unenroll/<?= (int) $course['id'] ?>"
-                              style="display:inline;">
+                        <?php if ($s['status'] === 'active'): ?>
+                            <span class="tag tag--ok">Active</span>
+                        <?php else: ?>
+                            <span class="tag tag--flag">Suspended</span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="actions">
+                        <form method="POST" action="<?= BASE_URL ?>admin/unenroll/<?= (int) $course['id'] ?>">
                             <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
                             <input type="hidden" name="student_id" value="<?= (int) $s['id'] ?>">
-                            <button type="submit" class="btn-small btn-danger">Remove</button>
+                            <button type="submit" class="btn btn--danger-quiet btn--sm">Remove</button>
                         </form>
                     </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
-        <?php endif; ?>
     </div>
+    <?php endif; ?>
+
+</main>
 </body>
 </html>

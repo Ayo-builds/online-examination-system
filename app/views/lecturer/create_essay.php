@@ -2,34 +2,53 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Essay Question — <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
-    <div style="padding: 30px; max-width: 600px; margin: 0 auto;">
-        <p><a href="<?= BASE_URL ?>lecturer/questions/<?= (int) $course['id'] ?>">&larr; Question bank</a></p>
-        <h1>Add Essay Question — <?= htmlspecialchars($course['course_code']) ?></h1>
+<?php $nav_current = 'dashboard'; require APP_ROOT . '/app/views/_partials/topbar.php'; ?>
 
-        <?php if (!empty($errors)): ?>
-            <div class="alert alert-error">
-                <?php foreach ($errors as $e): ?>
-                    <div><?= htmlspecialchars($e) ?></div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
+<main class="shell shell--tight">
 
-        <form method="POST" action="<?= BASE_URL ?>lecturer/storeEssay/<?= (int) $course['id'] ?>">
-            <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
+    <a class="backlink" href="<?= BASE_URL ?>lecturer/questions/<?= (int) $course['id'] ?>">&larr; Question bank</a>
 
+    <div class="page__head">
+        <div>
+            <p class="eyebrow"><?= htmlspecialchars($course['course_code']) ?></p>
+            <h1 class="page__title">Add an essay question</h1>
+        </div>
+    </div>
+
+    <?php if (!empty($errors)): ?>
+        <div class="alert alert-error">
+            <?php foreach ($errors as $e): ?>
+                <div><?= htmlspecialchars($e) ?></div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
+    <form method="POST" action="<?= BASE_URL ?>lecturer/storeEssay/<?= (int) $course['id'] ?>">
+        <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
+
+        <div class="field">
             <label for="question_text">Question</label>
             <textarea id="question_text" name="question_text" rows="5" required><?= htmlspecialchars($old['question_text'] ?? '') ?></textarea>
+        </div>
 
+        <div class="field">
             <label for="marks">Marks</label>
             <input type="number" id="marks" name="marks" step="0.5" min="0.5" max="100" required
                    value="<?= htmlspecialchars((string) ($old['marks'] ?? 10)) ?>">
+            <p class="help">Essay answers are marked by hand from the grading queue.</p>
+        </div>
 
-            <button type="submit">Add question</button>
-        </form>
-    </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Add question</button>
+            <a class="btn btn--quiet" href="<?= BASE_URL ?>lecturer/questions/<?= (int) $course['id'] ?>">Cancel</a>
+        </div>
+    </form>
+
+</main>
 </body>
 </html>
