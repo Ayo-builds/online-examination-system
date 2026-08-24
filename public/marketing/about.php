@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/_partials/bootstrap.php';
 
-$page_title       = 'About — ' . APP_NAME;
+$page_title       = 'About · ' . APP_NAME;
 $page_description = 'Why this examination system is built the way it is: server-owned timing, '
                   . 'signals rather than verdicts, access enforced at the route, and evidence that outlives the attempt.';
 $page_key         = 'about';
@@ -20,7 +20,7 @@ require __DIR__ . '/_partials/nav.php';
         <h1 class="phead__title rise rise--2">Built for the questions that come after the exam.</h1>
         <p class="phead__lead rise rise--3">
           Delivering a paper is the easy half. The hard half is being able to explain,
-          months later, exactly what happened during one particular attempt — and having
+          months later, exactly what happened during one particular attempt, and having
           the record to show for it.
         </p>
       </div>
@@ -52,7 +52,7 @@ require __DIR__ . '/_partials/nav.php';
         </p>
         <p>
           The trade is deliberate. A narrower claim is one the institution can actually
-          defend at an appeal hearing — and a flagged attempt here comes with a timestamped
+          defend at an appeal hearing. A flagged attempt here comes with a timestamped
           list of what triggered the flag, not a confidence score nobody can interrogate.
         </p>
       </div>
@@ -78,7 +78,7 @@ require __DIR__ . '/_partials/nav.php';
             <p class="principle__body">
               A countdown the browser owns is a countdown a candidate can edit. The
               deadline is written by the database the moment an attempt starts, and the
-              interface only reports it — which is why closing the tab, reloading, or
+              interface only reports it. That is why closing the tab, reloading, or
               changing the system clock buys nobody a single extra minute. A submission
               that arrives late is still graded rather than discarded; it is simply
               recorded as auto-submitted, because losing someone's work to network lag
@@ -95,7 +95,7 @@ require __DIR__ . '/_partials/nav.php';
               The system records events and flags an attempt once they pass a threshold.
               It never concludes that someone cheated. Losing window focus three times
               might be a candidate checking their phone, or a laptop throwing a
-              notification — the log states what occurred and stops there, because only a
+              notification. The log states what occurred and stops there, because only a
               person with the context can tell those apart.
             </p>
           </div>
@@ -107,7 +107,7 @@ require __DIR__ . '/_partials/nav.php';
             <h3 class="principle__title">One door, three destinations.</h3>
             <p class="principle__body">
               Everyone signs in at the same page. What changes is where you land and what
-              the server will answer — enforced on every request, not hidden in a template.
+              the server will answer, enforced on every request and not hidden in a template.
               A student who types a lecturer's URL is refused by the guard, not merely
               shown a page missing its buttons.
             </p>
@@ -141,9 +141,9 @@ require __DIR__ . '/_partials/nav.php';
           <h2 class="h2">Deliberately small.</h2>
           <div class="prose">
             <p>
-              The application is plain PHP against MySQL, on a hand-written MVC core —
-              a router, a thin controller layer, and models that own their queries. There
-              is no framework underneath it.
+              The application is plain PHP against MySQL, on a hand-written MVC core.
+              That means a router, a thin controller layer, and models that own their
+              queries. There is no framework underneath it.
             </p>
             <p>
               That is a considered choice for something a university has to keep running
@@ -161,7 +161,7 @@ require __DIR__ . '/_partials/nav.php';
           </div>
           <div class="spec__row">
             <span class="spec__k">Architecture</span>
-            <span class="spec__v">Custom MVC — router, controllers, models</span>
+            <span class="spec__v">Custom MVC with router, controllers and models</span>
           </div>
           <div class="spec__row">
             <span class="spec__k">Database</span>

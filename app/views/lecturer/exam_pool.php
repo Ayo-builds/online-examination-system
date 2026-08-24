@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam Pool — <?= APP_NAME ?></title>
+    <title>Exam Pool · <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
@@ -54,8 +54,8 @@
 
     <?php elseif ($exam['status'] !== 'draft'): ?>
         <div class="alert alert--info stack-md">
-            This exam is <?= htmlspecialchars($exam['status']) ?> — the pool is locked so that
-            attempts already in flight keep grading against the questions they were drawn from.
+            This exam is <?= htmlspecialchars($exam['status']) ?>, so the pool is locked. Attempts
+            already in flight keep grading against the questions they were drawn from.
         </div>
 
         <div class="picklist">

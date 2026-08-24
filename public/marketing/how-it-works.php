@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/_partials/bootstrap.php';
 
-$page_title       = 'How it works — ' . APP_NAME;
+$page_title       = 'How it works · ' . APP_NAME;
 $page_description = 'An exam from enrolment to published result: who does what at each stage, '
                   . 'what the system does during an attempt, and what happens when something goes wrong.';
 $page_key         = 'how-it-works';
@@ -54,7 +54,7 @@ require __DIR__ . '/_partials/nav.php';
               that matters: it decides who can reach a paper at all.
             </p>
             <ul class="stage__detail">
-              <li>Every account carries one role — student, lecturer or administrator</li>
+              <li>Every account carries one role, either student, lecturer or administrator</li>
               <li>Courses created and assigned to a lecturer</li>
               <li>Students enrolled per course</li>
               <li>A student who is not enrolled is refused, URL or no URL</li>
@@ -90,7 +90,7 @@ require __DIR__ . '/_partials/nav.php';
             <p class="stage__role">Student</p>
             <h3 class="stage__title">Sit the paper</h3>
             <p class="stage__text">
-              Inside the window, an enrolled student starts the attempt — and this is the
+              Inside the window, an enrolled student starts the attempt. This is the
               moment that matters most. The system draws a random subset of the pool and
               freezes it as <em>that candidate's</em> paper, while the database stamps a
               deadline calculated from the exam's duration. Two students sitting the same
@@ -114,7 +114,7 @@ require __DIR__ . '/_partials/nav.php';
             <h3 class="stage__title">Mark and publish</h3>
             <p class="stage__text">
               On submission, multiple-choice answers are graded against the correct
-              answers frozen into that paper — not against whatever the question pool
+              answers frozen into that paper, not against whatever the question pool
               says today, which is what keeps an old result reproducible. Essays queue for
               the lecturer. Once nothing is outstanding, the score reaches the student and
               the analytics reach the lecturer.
@@ -164,22 +164,22 @@ require __DIR__ . '/_partials/nav.php';
         </div>
         <div class="tl">
           <span class="tl__at">00:15:42</span>
-          <span class="tl__what">Question 7 answered again — the earlier answer is overwritten</span>
+          <span class="tl__what">Question 7 answered again, overwriting the earlier answer</span>
           <span class="tl__who">Student</span>
         </div>
         <div class="tl">
           <span class="tl__at">00:31:07</span>
-          <span class="tl__what">Window lost focus — written to the log</span>
+          <span class="tl__what">Window lost focus, written to the log</span>
           <span class="tl__who">Server</span>
         </div>
         <div class="tl">
           <span class="tl__at">00:31:41</span>
-          <span class="tl__what">Window lost focus — written to the log</span>
+          <span class="tl__what">Window lost focus, written to the log</span>
           <span class="tl__who">Server</span>
         </div>
         <div class="tl tl--mark">
           <span class="tl__at">00:32:15</span>
-          <span class="tl__what">Third counting event — attempt flagged for review</span>
+          <span class="tl__what">Third counting event, so the attempt is flagged for review</span>
           <span class="tl__who">Server</span>
         </div>
         <div class="tl">
@@ -220,7 +220,7 @@ require __DIR__ . '/_partials/nav.php';
             <p class="principle__body">
               Everything already saved stays saved, because saving happens on entry rather
               than at submission. When the connection returns the attempt is still open and
-              still theirs. The clock, however, has kept running — time spent offline is not
+              still theirs. The clock, however, has kept running. Time spent offline is not
               refunded, because the server has no way to verify what happened during it.
             </p>
           </div>
@@ -246,7 +246,7 @@ require __DIR__ . '/_partials/nav.php';
             <h3 class="principle__title">A student closes the browser and comes back.</h3>
             <p class="principle__body">
               They return to the same attempt, with their saved answers and the same
-              deadline. Closing a window does not pause an exam — if it did, every
+              deadline. Closing a window does not pause an exam. If it did, every
               candidate would close their window. What they lose is the time they were
               away, and if the deadline passed while they were gone the attempt is closed
               on their return.
@@ -273,7 +273,7 @@ require __DIR__ . '/_partials/nav.php';
             <p class="principle__body">
               Nothing happens to the student automatically. The flag marks the attempt for
               review with the events that caused it attached, and a person decides what it
-              means. Note that not every logged event counts toward the flag — copy and
+              means. Note that not every logged event counts toward the flag. Copy and
               paste are recorded for context, while the threshold counts the events that
               suggest a candidate left the paper.
             </p>

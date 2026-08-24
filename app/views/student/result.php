@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Result — <?= APP_NAME ?></title>
+    <title>Result · <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
@@ -35,7 +35,7 @@
             <?php
                 $score = (float) $attempt['total_score'];
                 $pass  = (float) $exam['pass_mark'];
-                // pass_mark is a %, so compare against percentage — but we need max marks.
+                // pass_mark is a %, so compare against percentage. But we need max marks.
             ?>
             <p class="stat__label">Your score</p>
             <p class="score"><?= htmlspecialchars($attempt['total_score']) ?></p>

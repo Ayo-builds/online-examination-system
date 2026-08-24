@@ -7,8 +7,8 @@ require __DIR__ . '/_partials/bootstrap.php';
  */
 const CONTACT_EMAIL = 'examsystemsupport@gmail.com';
 
-$page_title       = 'Contact — ' . APP_NAME;
-$page_description = 'Who to contact about exam access, marks and accounts — and the things '
+$page_title       = 'Contact · ' . APP_NAME;
+$page_description = 'Who to contact about exam access, marks and accounts, plus the things '
                   . 'you can resolve without contacting anyone.';
 $page_key         = 'contact';
 
@@ -48,8 +48,8 @@ require __DIR__ . '/_partials/nav.php';
           <p class="role__who">If you are a student</p>
           <h3 class="role__title">Ask your lecturer first</h3>
           <p class="role__body">
-            Anything about a paper — a missing exam, a mark you want to query, an essay
-            still unmarked — sits with the lecturer who owns the course. They can see the
+            Anything about a paper sits with the lecturer who owns the course. That
+            covers a missing exam, a mark you want to query, or an essay still unmarked. They can see the
             exam's window, whether it is published, and your attempt's record. For
             problems signing in or an account that will not open, your institution's
             administrator is the one with the controls.
@@ -72,9 +72,10 @@ require __DIR__ . '/_partials/nav.php';
           <p class="role__who">If you are an administrator</p>
           <h3 class="role__title">Come to us</h3>
           <p class="role__body">
-            Anything that is not a matter of configuration — behaviour that looks wrong,
-            a question about how something is enforced, or an institution evaluating the
-            platform — comes to whoever maintains this deployment. Details are below.
+            Anything that is not a matter of configuration comes to whoever maintains
+            this deployment. That covers behaviour that looks wrong, a question about how
+            something is enforced, or an institution evaluating the platform. Details are
+            below.
           </p>
         </article>
 
@@ -102,9 +103,9 @@ require __DIR__ . '/_partials/nav.php';
             <h3 class="principle__title">You have been locked out after failed sign-ins.</h3>
             <p class="principle__body">
               Five failed attempts on the same account trigger a fifteen-minute lockout,
-              and the sign-in page will tell you how long is left. It clears itself — nobody
-              needs to unlock anything, and writing to an administrator will not make it
-              expire sooner.
+              and the sign-in page will tell you how long is left. It clears itself, so
+              nobody needs to unlock anything, and writing to an administrator will not
+              make it expire sooner.
             </p>
           </div>
         </article>
@@ -117,7 +118,7 @@ require __DIR__ . '/_partials/nav.php';
               There are three reasons, and only three. The exam has not been published yet;
               the current time is outside its availability window; or you are not enrolled
               on the course it belongs to. Your lecturer can tell you which of the three it
-              is in a moment — the first two resolve themselves, the third does not.
+              is in a moment. The first two resolve themselves, the third does not.
             </p>
           </div>
         </article>
@@ -127,7 +128,7 @@ require __DIR__ . '/_partials/nav.php';
           <div class="principle__text">
             <h3 class="principle__title">Something went wrong during an attempt.</h3>
             <p class="principle__body">
-              Do not start by writing an email — go back to the exam. Answers are saved as
+              Do not start by writing an email. Go back to the exam. Answers are saved as
               you enter them, so a dropped connection or a closed browser leaves your work
               intact and the attempt still open. The clock will have kept running. If the
               deadline passed while you were away, the attempt closes and grades on whatever
@@ -157,7 +158,7 @@ require __DIR__ . '/_partials/nav.php';
               This one does need a person. There is no self-service password reset in the
               platform, so a forgotten password has to be handled by your institution's
               administrator directly. The same applies to an account that has been
-              deactivated — only an administrator can turn it back on.
+              deactivated, because only an administrator can turn it back on.
             </p>
           </div>
         </article>
@@ -177,7 +178,7 @@ require __DIR__ . '/_partials/nav.php';
           <div class="prose">
             <p>
               Behaviour that looks wrong, a question about how something is actually
-              enforced, or an institution weighing the platform up — write to whoever
+              enforced, or an institution weighing the platform up, write to whoever
               maintains this deployment.
             </p>
           </div>
@@ -199,11 +200,11 @@ require __DIR__ . '/_partials/nav.php';
           </div>
           <div class="spec__row">
             <span class="spec__k">Never send</span>
-            <span class="spec__v">Your password — nobody here will ever ask for it</span>
+            <span class="spec__v">Your password, which nobody here will ever ask for</span>
           </div>
           <div class="spec__row">
             <span class="spec__k">Not here</span>
-            <span class="spec__v">Password resets and enrolment — your administrator holds those</span>
+            <span class="spec__v">Password resets and enrolment, which your administrator holds</span>
           </div>
         </div>
 
@@ -218,7 +219,7 @@ require __DIR__ . '/_partials/nav.php';
         <p class="eyebrow">Already registered</p>
         <h2 class="cta__title">If you can sign in, start there.</h2>
         <p class="lead">
-          Your dashboard shows your courses, your exams and their windows — which answers
+          Your dashboard shows your courses, your exams and their windows, which answers
           most questions faster than asking will.
         </p>
         <a class="btn btn--primary" href="<?= e(url(LOGIN_URL_PATH)) ?>">

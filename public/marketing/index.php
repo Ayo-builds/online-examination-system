@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/_partials/bootstrap.php';
 
-$page_title       = APP_NAME . ' — timed, invigilated online exams';
+$page_title       = APP_NAME . ' · timed, invigilated online exams';
 $page_description = 'A timed, invigilated online examination platform for universities and colleges. '
                   . 'Server-side clocks, per-attempt integrity logging, role-based dashboards and published results.';
 
@@ -37,7 +37,7 @@ require __DIR__ . '/_partials/nav.php';
 
         <p class="hero__lead rise rise--2">
           A timed, invigilated examination platform for universities and colleges.
-          Set the paper once — delivery, supervision, marking and results are handled,
+          Set the paper once. Delivery, supervision, marking and results are handled,
           and every candidate leaves an audit trail.
         </p>
 
@@ -94,7 +94,7 @@ require __DIR__ . '/_partials/nav.php';
         <h2 class="h2">Three roles, three different jobs.</h2>
         <p class="lead">
           Everyone signs in through the same door and lands somewhere built for what
-          they actually do — no shared dashboard that half-fits everybody.
+          they actually do. There is no shared dashboard that half-fits everybody.
         </p>
       </div>
 
@@ -124,7 +124,7 @@ require __DIR__ . '/_partials/nav.php';
           <h3 class="role__title">Run the institution</h3>
           <p class="role__body">
             Create accounts, enrol cohorts onto courses, and read integrity signals
-            across every exam sitting — including the ones happening right now.
+            across every exam sitting, including the ones happening right now.
           </p>
         </article>
 
@@ -215,7 +215,7 @@ require __DIR__ . '/_partials/nav.php';
           <h3 class="feature__title">Results and analytics</h3>
           <p class="feature__body">
             Scores land the moment marking finishes. Beyond the grade, you can see
-            which questions the cohort actually struggled with — and which ones were
+            which questions the cohort actually struggled with, and which ones were
             simply badly written.
           </p>
           <ul class="feature__list">
@@ -290,7 +290,7 @@ require __DIR__ . '/_partials/nav.php';
           <p class="lead">
             The system raises signals; it does not pass judgement. Every attempt carries
             a timestamped record, and one that crosses the flag threshold is surfaced for
-            a human decision — with the evidence attached, so that decision can be defended.
+            a human decision, with the evidence attached, so that decision can be defended.
           </p>
         </div>
 
@@ -303,37 +303,37 @@ require __DIR__ . '/_partials/nav.php';
 
             <div class="ledger__row">
               <span class="ledger__at">00:00:04</span>
-              <span class="ledger__what">Attempt opened — 40 questions, 120 minutes</span>
+              <span class="ledger__what">Attempt opened with 40 questions and 120 minutes</span>
               <span class="tag tag--ok">Logged</span>
             </div>
 
             <div class="ledger__row">
               <span class="ledger__at">00:14:52</span>
-              <span class="ledger__what">Answer saved — question 9</span>
+              <span class="ledger__what">Answer saved for question 9</span>
               <span class="tag tag--ok">Logged</span>
             </div>
 
             <div class="ledger__row">
               <span class="ledger__at">00:31:07</span>
-              <span class="ledger__what">Window lost focus — 6 seconds</span>
+              <span class="ledger__what">Window lost focus for 6 seconds</span>
               <span class="tag tag--warn">Event 1</span>
             </div>
 
             <div class="ledger__row">
               <span class="ledger__at">00:31:41</span>
-              <span class="ledger__what">Window lost focus — 11 seconds</span>
+              <span class="ledger__what">Window lost focus for 11 seconds</span>
               <span class="tag tag--warn">Event 2</span>
             </div>
 
             <div class="ledger__row">
               <span class="ledger__at">00:32:15</span>
-              <span class="ledger__what">Window lost focus — 4 seconds</span>
+              <span class="ledger__what">Window lost focus for 4 seconds</span>
               <span class="tag tag--flag">Threshold met</span>
             </div>
 
             <div class="ledger__row">
               <span class="ledger__at">01:58:30</span>
-              <span class="ledger__what">Submitted — 2 answers pending manual marking</span>
+              <span class="ledger__what">Submitted with 2 answers pending manual marking</span>
               <span class="tag tag--ok">Logged</span>
             </div>
 
@@ -367,7 +367,7 @@ require __DIR__ . '/_partials/nav.php';
 </main>
 
 <script>
-/* The hero clock. Illustrative only — no data leaves or enters this page. */
+/* The hero clock. Illustrative only. No data leaves or enters this page. */
 (function () {
   var time = document.getElementById('clockTime');
   var fill = document.getElementById('clockFill');

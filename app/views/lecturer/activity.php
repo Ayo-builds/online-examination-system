@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activity Review — <?= APP_NAME ?></title>
+    <title>Activity Review · <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
@@ -27,7 +27,7 @@
     <?php if ((int) $attempt['is_flagged'] === 1): ?>
         <div class="alert alert--danger">
             <strong>&#9873; Flagged for review.</strong>
-            The events below crossed the threshold. Read the timeline before deciding — the
+            The events below crossed the threshold. Read the timeline before deciding. The
             system logs evidence, it does not judge.
         </div>
     <?php else: ?>

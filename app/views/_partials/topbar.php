@@ -1,6 +1,6 @@
 <?php
 /**
- * Application top bar — the signed-in counterpart to the marketing site's nav.
+ * Application top bar. The signed-in counterpart to the marketing site's nav.
  *
  * Presentation only. It reads state, never changes it:
  *   $user         optional; the three dashboards already pass it, every other
@@ -13,7 +13,7 @@
 $u = $user ?? (class_exists('Auth') && Auth::check() ? Auth::user() : null);
 
 if ($u === null) {
-    return;   // signed out — nothing to draw
+    return;   // signed out, so nothing to draw
 }
 
 $role = $u['role'] ?? '';

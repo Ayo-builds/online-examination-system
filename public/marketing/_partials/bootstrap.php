@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Marketing site bootstrap.
  *
- * These pages are served DIRECTLY by Apache — public/.htaccess passes real files
+ * These pages are served DIRECTLY by Apache. public/.htaccess passes real files
  * straight through, so nothing here goes near the Router, a Controller, a Model,
  * or the database. This file exists only to borrow APP_NAME and BASE_URL from the
  * app's own config so the two stay in sync, and to send the same security headers
@@ -54,5 +54,5 @@ function e(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
-/** Where the sign-in CTA points — the EXISTING auth route, untouched. */
+/** Where the sign-in CTA points. This is the EXISTING auth route, untouched. */
 const LOGIN_URL_PATH = 'auth/login';

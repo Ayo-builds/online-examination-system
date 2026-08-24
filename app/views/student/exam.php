@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam in progress — <?= APP_NAME ?></title>
+    <title>Exam in progress · <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
@@ -107,10 +107,10 @@
                 if (data.ok) {
                     flashSaved(questionId);
                 } else if (data.error === 'closed') {
-                    form.submit();   // deadline passed server-side — submit now
+                    form.submit();   // deadline passed server-side, so submit now
                 }
             } catch (e) {
-                // Network blip — the answer stays in the DOM; next change retries.
+                // Network blip. The answer stays in the DOM; next change retries.
             }
         }
 
@@ -134,7 +134,7 @@
             });
         });
 
-        // Essays: debounce — save ~1s after typing stops
+        // Essays: debounce, saving ~1s after typing stops
         document.querySelectorAll('textarea[data-question]').forEach(t => {
             let timer = null;
             t.addEventListener('input', () => {

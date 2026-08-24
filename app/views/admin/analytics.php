@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Analytics — <?= APP_NAME ?></title>
+    <title>System Analytics · <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
@@ -60,7 +60,7 @@
             <span class="stat__label">Ran out of time</span>
             <span class="stat__value"><?= $toRate ?>%</span>
             <span class="stat__note">
-                <?= $timedOut ?> of <?= $total ?><?= $toRate > 30 ? ' — exams may be too long for their duration' : '' ?>
+                <?= $timedOut ?> of <?= $total ?><?= $toRate > 30 ? '. Exams may be too long for their duration' : '' ?>
             </span>
         </div>
         <div class="stat">
