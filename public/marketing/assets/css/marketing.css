@@ -14,9 +14,9 @@
 }
 
 @font-face {
-  font-family: "Public Sans";
-  src: url("../fonts/publicsans-400-700.woff2") format("woff2-variations");
-  font-weight: 400 700;
+  font-family: "IBM Plex Sans";
+  src: url("../fonts/plexsans-400-700.woff2") format("woff2-variations");
+  font-weight: 100 700;
   font-style: normal;
   font-display: swap;
 }
@@ -63,17 +63,39 @@
   --teal:       #1F7A6B;
   --teal-soft:  #3FA894;
 
-  /* Type */
+  /* Faces. Shared with the application shell so both halves of the product
+     speak in one voice. IBM Plex Sans belongs to the same family as the Plex
+     Mono already used here for data and timestamps. */
   --display: "Fraunces", "Iowan Old Style", Georgia, serif;
-  --body:    "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body:    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono:    "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
 
-  /* Scale */
-  --t-hero:  clamp(2.2rem, 6.5vw, 4.15rem);
-  --t-h2:    clamp(1.85rem, 3.6vw, 2.8rem);
-  --t-h3:    clamp(1.2rem, 1.6vw, 1.4rem);
+  /* Scale. Section headings pull away from the lead, which previously sat only
+     0.2rem below them and made the two compete. */
+  --t-hero:  clamp(2.3rem, 6.5vw, 4.4rem);
+  --t-h2:    clamp(1.95rem, 3.8vw, 3rem);
+  --t-h3:    clamp(1.35rem, 2vw, 1.65rem);
   --t-lead:  clamp(1.05rem, 1.35vw, 1.2rem);
+  --t-body:  1rem;
+  --t-small: 0.875rem;
   --t-micro: 0.7rem;
+
+  /* Weight. Rank is carried by weight as much as by size. */
+  --w-title: 600;
+  --w-sect:  700;
+  --w-card:  600;
+  --w-body:  400;
+  --w-micro: 500;
+
+  /* Line height tightens as type grows. */
+  --lh-title: 1.02;
+  --lh-sect:  1.18;
+  --lh-body:  1.65;
+
+  /* Tracking: negative at display sizes, open on uppercase labels. */
+  --ls-title: -0.028em;
+  --ls-sect:  -0.015em;
+  --ls-micro: 0.15em;
 
   /* Rhythm */
   --gutter:  clamp(1.25rem, 4vw, 2.5rem);
@@ -170,9 +192,9 @@ a { color: inherit; }
   font-family: var(--display);
   font-optical-sizing: auto;
   font-size: var(--t-h2);
-  font-weight: 600;
+  font-weight: var(--w-title);
   line-height: 1.08;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.022em;
   text-wrap: balance;
 }
 
@@ -350,9 +372,9 @@ a { color: inherit; }
   font-optical-sizing: auto;
   font-variation-settings: "opsz" 120;
   font-size: var(--t-hero);
-  font-weight: 600;
-  line-height: 1.02;
-  letter-spacing: -0.028em;
+  font-weight: var(--w-title);
+  line-height: var(--lh-title);
+  letter-spacing: var(--ls-title);
   text-wrap: balance;
 }
 /* Each sentence balances on its own, so neither ends on an orphan word. */
@@ -551,9 +573,9 @@ a { color: inherit; }
 .feature__title {
   font-family: var(--display);
   font-size: var(--t-h3);
-  font-weight: 600;
-  letter-spacing: -0.012em;
-  line-height: 1.2;
+  font-weight: var(--w-title);
+  letter-spacing: var(--ls-sect);
+  line-height: var(--lh-sect);
 }
 .feature__body { color: var(--slate); font-size: 0.97rem; }
 
@@ -705,7 +727,7 @@ a { color: inherit; }
 .cta__title {
   font-family: var(--display);
   font-size: var(--t-h2);
-  font-weight: 600;
+  font-weight: var(--w-title);
   line-height: 1.08;
   letter-spacing: -0.02em;
   text-wrap: balance;
@@ -830,9 +852,9 @@ a { color: inherit; }
 .principle__title {
   font-family: var(--display);
   font-size: var(--t-h3);
-  font-weight: 600;
-  letter-spacing: -0.012em;
-  line-height: 1.22;
+  font-weight: var(--w-title);
+  letter-spacing: var(--ls-sect);
+  line-height: var(--lh-sect);
 }
 .principle__body { color: var(--slate); max-width: 60ch; }
 

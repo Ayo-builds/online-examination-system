@@ -23,9 +23,9 @@
 }
 
 @font-face {
-  font-family: "Public Sans";
-  src: url("../../marketing/assets/fonts/publicsans-400-700.woff2") format("woff2-variations");
-  font-weight: 400 700;
+  font-family: "IBM Plex Sans";
+  src: url("../../marketing/assets/fonts/plexsans-400-700.woff2") format("woff2-variations");
+  font-weight: 100 700;
   font-style: normal;
   font-display: swap;
 }
@@ -87,18 +87,45 @@
   --danger-deep: #8A2E19;
   --danger-wash: #FAEBE6;
 
-  /* Type */
+  /* Faces.
+     Fraunces carries display only. IBM Plex Sans replaces Public Sans for UI
+     text: it shares a skeleton and metrics with IBM Plex Mono, which this app
+     already uses for codes, scores and timers, so data and interface finally
+     speak in one voice. Its heavier weights also carry far more presence than
+     Public Sans did, which is what the hierarchy below leans on. */
   --display: "Fraunces", "Iowan Old Style", Georgia, serif;
-  --body:    "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body:    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono:    "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
 
-  /* Scale — flatter than marketing; app titles do not shout */
-  --t-page:  clamp(1.6rem, 2.6vw, 2.1rem);
-  --t-sect:  1.15rem;
-  --t-card:  1rem;
-  --t-body:  0.95rem;
-  --t-small: 0.86rem;
-  --t-micro: 0.7rem;
+  /* Scale. A 1.2 to 1.33 step between adjacent levels, so each one reads as its
+     own rank instead of a slightly different size. 41.6/24/18/15/13/11px */
+  --t-page:  clamp(2rem, 3.2vw, 2.6rem);
+  --t-sect:  1.5rem;
+  --t-card:  1.125rem;
+  --t-body:  0.9375rem;
+  --t-small: 0.8125rem;
+  --t-micro: 0.6875rem;
+
+  /* Weight. Rank is carried by weight as much as by size. */
+  --w-title: 600;
+  --w-sect:  700;
+  --w-card:  600;
+  --w-label: 600;
+  --w-body:  400;
+  --w-micro: 500;
+
+  /* Line height tightens as type grows. */
+  --lh-title: 1.1;
+  --lh-sect:  1.25;
+  --lh-card:  1.35;
+  --lh-body:  1.6;
+  --lh-micro: 1.45;
+
+  /* Tracking: negative at display sizes, open on uppercase labels. */
+  --ls-title: -0.022em;
+  --ls-sect:  -0.012em;
+  --ls-card:  -0.006em;
+  --ls-micro: 0.14em;
 
   /* Rhythm */
   --gutter:  clamp(1rem, 3vw, 1.75rem);
@@ -123,7 +150,7 @@ body {
   color: var(--graphite);
   font-family: var(--body);
   font-size: var(--t-body);
-  line-height: 1.6;
+  line-height: var(--lh-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -223,7 +250,7 @@ a:hover { color: var(--ok-deep); }
   color: var(--paper-dim);
   text-decoration: none;
   font-size: var(--t-small);
-  font-weight: 500;
+  font-weight: var(--w-micro);
   padding: 0.5rem 0;
   border-bottom: 2px solid transparent;
   white-space: nowrap;
@@ -278,18 +305,20 @@ a:hover { color: var(--ok-deep); }
 .eyebrow {
   font-family: var(--mono);
   font-size: var(--t-micro);
-  letter-spacing: 0.13em;
+  font-weight: var(--w-micro);
+  line-height: var(--lh-micro);
+  letter-spacing: var(--ls-micro);
   text-transform: uppercase;
   color: var(--slate);
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .page__title {
   font-family: var(--display);
   font-size: var(--t-page);
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: -0.015em;
+  font-weight: var(--w-title);
+  line-height: var(--lh-title);
+  letter-spacing: var(--ls-title);
   text-wrap: balance;
 }
 
@@ -316,10 +345,11 @@ a:hover { color: var(--ok-deep); }
 
 h2.section {
   font-size: var(--t-sect);
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  margin-top: 2rem;
-  margin-bottom: 0.85rem;
+  font-weight: var(--w-sect);
+  line-height: var(--lh-sect);
+  letter-spacing: var(--ls-sect);
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
 }
 
 /* ---------- Cards -------------------------------------------------------- */
@@ -341,8 +371,9 @@ h2.section {
 
 .card__title {
   font-size: var(--t-card);
-  font-weight: 650;
-  letter-spacing: -0.005em;
+  font-weight: var(--w-card);
+  line-height: var(--lh-card);
+  letter-spacing: var(--ls-card);
 }
 
 .card__meta {
@@ -380,17 +411,18 @@ h2.section {
 .stat__label {
   font-family: var(--mono);
   font-size: var(--t-micro);
-  letter-spacing: 0.11em;
+  font-weight: var(--w-micro);
+  letter-spacing: var(--ls-micro);
   text-transform: uppercase;
   color: var(--slate);
 }
 .stat__value {
   font-family: var(--mono);
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 500;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 .stat__note { font-size: var(--t-small); color: var(--slate); }
 .stat--ok     .stat__value { color: var(--ok); }
@@ -423,7 +455,7 @@ h2.section {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   margin-top: var(--stack);
-  font-size: var(--t-small);
+  font-size: var(--t-body);
 }
 
 .data-table thead {
@@ -434,8 +466,8 @@ h2.section {
 .data-table th {
   font-family: var(--mono);
   font-size: var(--t-micro);
-  font-weight: 500;
-  letter-spacing: 0.1em;
+  font-weight: var(--w-micro);
+  letter-spacing: var(--ls-micro);
   text-transform: uppercase;
   color: var(--slate);
   text-align: left;
@@ -478,9 +510,10 @@ h2.section {
 
 label {
   display: block;
-  margin-bottom: 0.35rem;
-  font-weight: 600;
+  margin-bottom: 0.4rem;
+  font-weight: var(--w-label);
   font-size: var(--t-small);
+  letter-spacing: 0.005em;
   color: var(--graphite);
 }
 
@@ -630,7 +663,8 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   display: inline-block;
   font-family: var(--mono);
   font-size: 0.63rem;
-  letter-spacing: 0.11em;
+  font-weight: var(--w-micro);
+  letter-spacing: var(--ls-micro);
   text-transform: uppercase;
   padding: 0.22em 0.55em;
   border-radius: 2px;
@@ -678,10 +712,10 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
 
 .auth-card h1 {
   font-family: var(--display);
-  font-size: 1.5rem;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.015em;
+  font-size: 1.875rem;
+  font-weight: var(--w-title);
+  line-height: var(--lh-title);
+  letter-spacing: var(--ls-title);
   text-wrap: balance;
 }
 
@@ -819,7 +853,8 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   gap: 1rem;
   font-family: var(--mono);
   font-size: var(--t-micro);
-  letter-spacing: 0.1em;
+  font-weight: var(--w-micro);
+  letter-spacing: var(--ls-micro);
   text-transform: uppercase;
   color: var(--slate);
 }
@@ -870,7 +905,7 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
 
 .muted    { color: var(--slate); }
 .small    { font-size: var(--t-small); }
-.micro    { font-size: var(--t-micro); letter-spacing: 0.1em; text-transform: uppercase; }
+.micro    { font-size: var(--t-micro); font-weight: var(--w-micro); letter-spacing: var(--ls-micro); text-transform: uppercase; }
 .mono     { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .nowrap   { white-space: nowrap; }
 .right    { text-align: right; }
