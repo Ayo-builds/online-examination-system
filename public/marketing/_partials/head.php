@@ -22,7 +22,7 @@ $page_key         = $page_key         ?? '';
 <meta property="og:image" content="<?= e(asset('img/exam-hall-1600.jpg')) ?>">
 
 <link rel="preload" href="<?= e(asset('fonts/fraunces-400-700.woff2')) ?>" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="<?= e(asset('fonts/publicsans-400-700.woff2')) ?>" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="<?= e(asset('fonts/plexsans-400-700.woff2')) ?>" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="<?= e(asset('css/marketing.css')) ?>">
 </head>
 <body>
