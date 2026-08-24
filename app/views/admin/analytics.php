@@ -11,14 +11,9 @@
 
 <main class="shell">
 
-    <a class="backlink" href="<?= BASE_URL ?>admin/dashboard">&larr; Dashboard</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow">Admin</p>
-            <h1 class="page__title">System analytics</h1>
-        </div>
-    </div>
+<?php
+$page_title = 'System analytics';
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <h2 class="section">Overview</h2>
     <div class="grid grid--3">

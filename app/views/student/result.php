@@ -11,14 +11,9 @@
 
 <main class="shell shell--tight">
 
-    <a class="backlink" href="<?= BASE_URL ?>student/dashboard">&larr; My exams</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow"><?= htmlspecialchars($attempt['course_code']) ?></p>
-            <h1 class="page__title"><?= htmlspecialchars($attempt['exam_title']) ?></h1>
-        </div>
-    </div>
+<?php
+$page_title = htmlspecialchars($attempt['exam_title']);
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <div class="card center">
         <?php if ($attempt['grading_status'] === 'partial'): ?>

@@ -11,18 +11,10 @@
 
 <main class="shell shell--tight">
 
-    <a class="backlink" href="<?= BASE_URL ?>lecturer/grading">&larr; Grading queue</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow">
-                <?= htmlspecialchars($attempt['course_code']) ?>
-                &middot; <?= htmlspecialchars($attempt['exam_title']) ?>
-            </p>
-            <h1 class="page__title">Activity review</h1>
-            <p class="page__lead"><?= htmlspecialchars($attempt['student_name']) ?></p>
-        </div>
-    </div>
+<?php
+$page_title = 'Activity review';
+$page_lead = htmlspecialchars($attempt['student_name']);
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if ((int) $attempt['is_flagged'] === 1): ?>
         <div class="alert alert--danger">

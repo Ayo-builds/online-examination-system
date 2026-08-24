@@ -11,15 +11,12 @@
 
 <main class="shell shell--narrow">
 
-    <div class="page__head">
-        <div>
-            <p class="eyebrow">Lecturer</p>
-            <h1 class="page__title">My courses</h1>
-        </div>
-        <div class="page__actions">
+<?php
+$page_title = 'My courses';
+ob_start(); ?>
             <a class="btn btn--secondary btn--sm" href="<?= BASE_URL ?>lecturer/grading">Grading queue</a>
-        </div>
-    </div>
+<?php $page_actions = ob_get_clean();
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (empty($courses)): ?>
         <div class="empty">

@@ -11,14 +11,9 @@
 
 <main class="shell shell--tight">
 
-    <a class="backlink" href="<?= BASE_URL ?>admin/courses">&larr; Courses</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow">Admin</p>
-            <h1 class="page__title">Create a course</h1>
-        </div>
-    </div>
+<?php
+$page_title = 'Create a course';
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (!empty($errors)): ?>
         <div class="alert alert-error">

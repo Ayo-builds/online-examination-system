@@ -11,12 +11,9 @@
 
 <main class="shell shell--narrow">
 
-    <div class="page__head">
-        <div>
-            <p class="eyebrow">Student</p>
-            <h1 class="page__title">My exams</h1>
-        </div>
-    </div>
+<?php
+$page_title = 'My exams';
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (empty($exams)): ?>
         <div class="empty">

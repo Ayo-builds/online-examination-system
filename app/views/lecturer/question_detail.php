@@ -11,17 +11,9 @@
 
 <main class="shell shell--tight">
 
-    <a class="backlink" href="<?= BASE_URL ?>lecturer/questions/<?= (int) $course['id'] ?>">&larr; Question bank</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow">
-                <?= htmlspecialchars(strtoupper($question['question_type'])) ?>
-                &middot; <?= htmlspecialchars($question['marks']) ?> mark(s)
-            </p>
-            <h1 class="page__title">Question</h1>
-        </div>
-    </div>
+<?php
+$page_title = 'Question';
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <div class="card">
         <p class="question-card__text">

@@ -11,17 +11,12 @@
 
 <main class="shell shell--narrow">
 
-    <a class="backlink" href="<?= BASE_URL ?>admin/dashboard">&larr; Dashboard</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow">Admin</p>
-            <h1 class="page__title">Courses</h1>
-        </div>
-        <div class="page__actions">
+<?php
+$page_title = 'Courses';
+ob_start(); ?>
             <a class="btn btn--primary btn--sm" href="<?= BASE_URL ?>admin/createCourse">Create course</a>
-        </div>
-    </div>
+<?php $page_actions = ob_get_clean();
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (empty($courses)): ?>
         <div class="empty">

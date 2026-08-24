@@ -11,15 +11,10 @@
 
 <main class="shell shell--narrow">
 
-    <div class="page__head">
-        <div>
-            <p class="eyebrow">Admin</p>
-            <h1 class="page__title">Dashboard</h1>
-            <p class="page__lead">
-                Signed in as <?= htmlspecialchars($user['name']) ?>.
-            </p>
-        </div>
-    </div>
+<?php
+$page_title = 'Dashboard';
+ob_start(); ?>Signed in as <?= htmlspecialchars($user['name']) ?>.<?php $page_lead = ob_get_clean();
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <div class="grid grid--3">
         <a class="tile" href="<?= BASE_URL ?>admin/users">

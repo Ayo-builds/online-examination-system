@@ -11,15 +11,10 @@
 
 <main class="shell shell--tight">
 
-    <a class="backlink" href="<?= BASE_URL ?>lecturer/exams/<?= (int) $course['id'] ?>">&larr; Exams</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow"><?= htmlspecialchars($course['course_code']) ?></p>
-            <h1 class="page__title"><?= htmlspecialchars($exam['title']) ?></h1>
-            <p class="page__lead">Question pool</p>
-        </div>
-    </div>
+<?php
+$page_title = htmlspecialchars($exam['title']);
+$page_lead = 'Question pool';
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <div class="grid grid--3">
         <div class="stat">

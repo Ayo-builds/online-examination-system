@@ -11,17 +11,12 @@
 
 <main class="shell shell--narrow">
 
-    <a class="backlink" href="<?= BASE_URL ?>lecturer/dashboard">&larr; My courses</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow"><?= htmlspecialchars($course['course_code']) ?></p>
-            <h1 class="page__title">Exams</h1>
-        </div>
-        <div class="page__actions">
+<?php
+$page_title = 'Exams';
+ob_start(); ?>
             <a class="btn btn--primary btn--sm" href="<?= BASE_URL ?>lecturer/createExam/<?= (int) $course['id'] ?>">Create exam</a>
-        </div>
-    </div>
+<?php $page_actions = ob_get_clean();
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (empty($exams)): ?>
         <div class="empty">

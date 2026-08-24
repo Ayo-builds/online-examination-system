@@ -116,8 +116,11 @@
   --t-small: 0.8125rem;
   --t-micro: 0.6875rem;
 
-  /* Weight. Rank is carried by weight as much as by size. */
-  --w-title: 600;
+  /* Weight. Rank is carried by weight as much as by size.
+     Fraunces is loaded across 400-700, so 700 is a real master rather than a
+     synthesised bold. At display sizes 600 read too light for the area it
+     covers. */
+  --w-title: 700;
   --w-sect:  700;
   --w-card:  600;
   --w-label: 600;
@@ -313,17 +316,6 @@ a:hover { color: var(--ok-deep); }
   margin-bottom: var(--stack);
 }
 
-.eyebrow {
-  font-family: var(--mono);
-  font-size: var(--t-micro);
-  font-weight: var(--w-micro);
-  line-height: var(--lh-micro);
-  letter-spacing: var(--ls-micro);
-  text-transform: uppercase;
-  color: var(--slate);
-  margin-bottom: 0.5rem;
-}
-
 .page__title {
   font-family: var(--display);
   font-size: var(--t-page);
@@ -340,19 +332,6 @@ a:hover { color: var(--ok-deep); }
 }
 
 .page__actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-
-/* Back link above a page title */
-.backlink {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 1.5rem;   /* 24px — WCAG 2.5.8 */
-  font-size: var(--t-small);
-  color: var(--slate);
-  text-decoration: none;
-  margin-bottom: 0.6rem;
-}
-.backlink:hover { color: var(--graphite); }
 
 h2.section {
   font-size: var(--t-sect);

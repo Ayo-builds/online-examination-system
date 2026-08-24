@@ -11,14 +11,9 @@
 
 <main class="shell shell--tight">
 
-    <a class="backlink" href="<?= BASE_URL ?>lecturer/questions/<?= (int) $course['id'] ?>">&larr; Question bank</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow"><?= htmlspecialchars($course['course_code']) ?></p>
-            <h1 class="page__title">Add a multiple-choice question</h1>
-        </div>
-    </div>
+<?php
+$page_title = 'Add a multiple-choice question';
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (!empty($errors)): ?>
         <div class="alert alert-error">

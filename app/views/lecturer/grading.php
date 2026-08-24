@@ -11,15 +11,10 @@
 
 <main class="shell">
 
-    <a class="backlink" href="<?= BASE_URL ?>lecturer/dashboard">&larr; My courses</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow">Lecturer</p>
-            <h1 class="page__title">Grading queue</h1>
-            <p class="page__lead">Submitted attempts awaiting marking or review. Flagged attempts carry an activity log.</p>
-        </div>
-    </div>
+<?php
+$page_title = 'Grading queue';
+$page_lead = 'Submitted attempts awaiting marking or review. Flagged attempts carry an activity log.';
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (empty($attempts)): ?>
         <div class="empty">

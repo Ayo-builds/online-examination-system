@@ -11,19 +11,14 @@
 
 <main class="shell shell--narrow">
 
-    <a class="backlink" href="<?= BASE_URL ?>lecturer/dashboard">&larr; My courses</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow"><?= htmlspecialchars($course['course_code']) ?></p>
-            <h1 class="page__title">Question bank</h1>
-            <p class="page__lead"><?= htmlspecialchars($course['title']) ?></p>
-        </div>
-        <div class="page__actions">
+<?php
+$page_title = 'Question bank';
+$page_lead = htmlspecialchars($course['title']);
+ob_start(); ?>
             <a class="btn btn--primary btn--sm" href="<?= BASE_URL ?>lecturer/createMcq/<?= (int) $course['id'] ?>">Add MCQ</a>
             <a class="btn btn--secondary btn--sm" href="<?= BASE_URL ?>lecturer/createEssay/<?= (int) $course['id'] ?>">Add essay</a>
-        </div>
-    </div>
+<?php $page_actions = ob_get_clean();
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (empty($questions)): ?>
         <div class="empty">

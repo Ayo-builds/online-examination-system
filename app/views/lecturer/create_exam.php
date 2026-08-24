@@ -11,15 +11,10 @@
 
 <main class="shell shell--tight">
 
-    <a class="backlink" href="<?= BASE_URL ?>lecturer/exams/<?= (int) $course['id'] ?>">&larr; Exams</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow"><?= htmlspecialchars($course['course_code']) ?></p>
-            <h1 class="page__title">Create an exam</h1>
-            <p class="page__lead">You will choose which questions go in the pool on the next screen.</p>
-        </div>
-    </div>
+<?php
+$page_title = 'Create an exam';
+$page_lead = 'You will choose which questions go in the pool on the next screen.';
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (!empty($errors)): ?>
         <div class="alert alert-error">

@@ -11,15 +11,10 @@
 
 <main class="shell shell--tight">
 
-    <a class="backlink" href="<?= BASE_URL ?>admin/courses">&larr; Courses</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow"><?= htmlspecialchars($course['course_code']) ?></p>
-            <h1 class="page__title">Enrolments</h1>
-            <p class="page__lead"><?= htmlspecialchars($course['title']) ?></p>
-        </div>
-    </div>
+<?php
+$page_title = 'Enrolments';
+$page_lead = htmlspecialchars($course['title']);
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <h2 class="section">Enrol a student</h2>
     <?php if (empty($available)): ?>

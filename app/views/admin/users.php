@@ -11,17 +11,12 @@
 
 <main class="shell shell--narrow">
 
-    <a class="backlink" href="<?= BASE_URL ?>admin/dashboard">&larr; Dashboard</a>
-
-    <div class="page__head">
-        <div>
-            <p class="eyebrow">Admin</p>
-            <h1 class="page__title">Users</h1>
-        </div>
-        <div class="page__actions">
+<?php
+$page_title = 'Users';
+ob_start(); ?>
             <a class="btn btn--primary btn--sm" href="<?= BASE_URL ?>admin/createUser">Create user</a>
-        </div>
-    </div>
+<?php $page_actions = ob_get_clean();
+require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <div class="table-wrap">
         <table class="data-table">
