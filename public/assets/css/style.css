@@ -46,6 +46,16 @@
   font-display: swap;
 }
 
+/* SemiBold. Without this the mono clamps at 500, which is why column headers
+   could not be given real weight against the rows beneath them. */
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../../marketing/assets/fonts/plexmono-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ---------- Tokens ------------------------------------------------------- */
 
 :root {
@@ -113,6 +123,7 @@
   --w-label: 600;
   --w-body:  400;
   --w-micro: 500;
+  --w-strong: 600;   /* column headers: a real weight, not a synthesised one */
 
   /* Line height tightens as type grows. */
   --lh-title: 1.1;
@@ -460,18 +471,21 @@ h2.section {
 
 .data-table thead {
   background: var(--paper-2);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 2px solid var(--graphite);
 }
 
+/* Column headers have to read as a different register from the rows, not as
+   slightly smaller body text. They take the full mono SemiBold, sit at ink
+   rather than slate, and are separated from the data by a firm rule. */
 .data-table th {
   font-family: var(--mono);
-  font-size: var(--t-micro);
-  font-weight: var(--w-micro);
-  letter-spacing: var(--ls-micro);
+  font-size: 0.75rem;
+  font-weight: var(--w-strong);
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--slate);
+  color: var(--graphite);
   text-align: left;
-  padding: 0.7rem 0.9rem;
+  padding: 0.8rem 0.9rem;
   white-space: nowrap;
 }
 
@@ -492,7 +506,7 @@ h2.section {
   font-variant-numeric: tabular-nums;
 }
 .data-table .num { text-align: right; }
-.data-table .code { font-size: 0.82rem; }
+.data-table .code { font-size: 0.875rem; }
 
 .data-table .actions { white-space: nowrap; }
 .data-table .actions a { margin-right: 0.65rem; }
