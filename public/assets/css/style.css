@@ -505,8 +505,19 @@ h2.section {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
 }
-.data-table .num { text-align: right; }
 .data-table .code { font-size: 0.875rem; }
+
+/* Column alignment.
+   A header and its cells must resolve to the same value, so the modifier is
+   qualified with th/td rather than left to the bare .right utility. Without
+   that qualifier `.data-table th` (0,1,1) outranks `.right` (0,1,0) and the
+   header stays left while its numbers go right.
+   Both spellings are honoured because the views use `th class="right"` above
+   `td class="num"` for the same column. */
+.data-table th.num,    .data-table td.num,
+.data-table th.right,  .data-table td.right   { text-align: right; }
+.data-table th.center, .data-table td.center  { text-align: center; }
+.data-table th.left,   .data-table td.left    { text-align: left; }
 
 .data-table .actions { white-space: nowrap; }
 .data-table .actions a { margin-right: 0.65rem; }
