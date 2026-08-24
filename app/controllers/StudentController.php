@@ -39,7 +39,7 @@ class StudentController extends Controller
         // 2. The student must be enrolled in its course
         if (!(new Enrollment())->isEnrolled($studentId, (int) $exam['course_id'])) {
             http_response_code(403);
-            exit('403 — You are not enrolled in this course.');
+            exit('403. You are not enrolled in this course.');
         }
 
         // 3. The window must be open right now
@@ -54,14 +54,14 @@ class StudentController extends Controller
 
         if ($existing !== null) {
             if ($existing['status'] === 'in_progress') {
-                // Already started — just continue
+                // Already started, so just continue
                 $this->redirect('student/exam/' . (int) $existing['id']);
             }
             // Submitted/auto-submitted/invalidated: no second attempt
             $this->redirect('student/dashboard');
         }
 
-        // All gates passed — create the snapshot
+        // All gates passed, so create the snapshot
         $attemptId = $attemptModel->start($examId, $studentId, $exam);
 
         $this->redirect('student/exam/' . $attemptId);
@@ -78,7 +78,7 @@ class StudentController extends Controller
 
         if ($attempt === null) {
             http_response_code(404);
-            exit('404 — Attempt not found.');
+            exit('404. Attempt not found.');
         }
 
         // Already finished? Send to the (future) result page, not the exam
@@ -99,7 +99,7 @@ class StudentController extends Controller
         ]);
     }
 
-    // POST /student/saveAnswer/{attemptId}  — AJAX, returns JSON
+    // POST /student/saveAnswer/{attemptId}. AJAX, returns JSON
     public function saveAnswer(string $attemptId = ''): void
     {
         // This is an AJAX endpoint: always answer in JSON, even on failure.
@@ -150,7 +150,7 @@ class StudentController extends Controller
     }
 
 
-    // POST /student/logActivity/{attemptId}  — AJAX, returns JSON
+    // POST /student/logActivity/{attemptId}. AJAX, returns JSON
     public function logActivity(string $attemptId = ''): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -220,7 +220,7 @@ class StudentController extends Controller
 
         if ($attempt === null) {
             http_response_code(404);
-            exit('404 — Attempt not found.');
+            exit('404. Attempt not found.');
         }
 
         // Only an in-progress attempt can be submitted

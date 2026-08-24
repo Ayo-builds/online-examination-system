@@ -20,7 +20,7 @@ class Attempt extends Model
         try {
             $this->db->beginTransaction();
 
-            // 1. The attempt row — deadline computed server-side, in SQL itself
+            // 1. The attempt row, with the deadline computed server-side, in SQL itself
             $this->query(
                 "INSERT INTO exam_attempts (exam_id, student_id, started_at, deadline_at)
                  VALUES (?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? MINUTE))",

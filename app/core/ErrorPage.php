@@ -9,7 +9,7 @@ class ErrorPage
         if (file_exists($file)) {
             require $file;
         } else {
-            echo $code . ' — ' . htmlspecialchars($message);
+            echo $code . '. ' . htmlspecialchars($message);
         }
         exit;
     }

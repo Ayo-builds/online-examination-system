@@ -13,7 +13,7 @@ class User extends Model
         return $row ?: null;
     }
 
-    // All users, newest first — for the admin list
+    // All users, newest first, for the admin list
     public function allByNewest(): array
     {
         return $this->query(

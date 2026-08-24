@@ -10,7 +10,7 @@ ini_set('session.use_strict_mode', '1');
 ini_set('session.use_only_cookies', '1');   // never accept an id from the URL
 
 // The Secure flag is set only when the request actually arrived over TLS.
-// Hardcoding it true would silently break sign-in over plain HTTP — which is
+// Hardcoding it true would silently break sign-in over plain HTTP, which is
 // how this app runs on a local XAMPP box. Behind a TLS-terminating proxy
 // (nginx on the live host) $_SERVER['HTTPS'] can be absent, so check the
 // forwarded header and port too.

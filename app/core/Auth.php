@@ -18,7 +18,7 @@ class Auth
             return false;
         }
 
-        // SUCCESS — regenerate the session ID before storing anything
+        // SUCCESS, so regenerate the session ID before storing anything
         session_regenerate_id(true);
 
         $_SESSION['user_id']   = (int) $user['id'];
@@ -56,7 +56,7 @@ class Auth
 
         // Kill the session cookie in the browser too.
         // Uses the options-array signature (PHP 7.3+) rather than the positional
-        // one, which has no samesite parameter — so the delete-cookie now carries
+        // one, which has no samesite parameter, so the delete-cookie now carries
         // the same attributes as the cookie it is replacing. Browsers match on
         // name/path/domain when expiring, so this worked before; it just emitted
         // a cookie whose attributes disagreed with the original.

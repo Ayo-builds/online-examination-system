@@ -17,13 +17,13 @@ class AdminController extends Controller
         $this->view('admin/users', ['users' => $users]);
     }
 
-    // GET /admin/createUser — show the form
+    // GET /admin/createUser. Show the form
     public function createUser(): void
     {
         $this->view('admin/create_user');
     }
 
-    // POST /admin/storeUser — process it
+    // POST /admin/storeUser. Process it
     public function storeUser(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

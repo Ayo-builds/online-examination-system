@@ -1,7 +1,7 @@
 <?php
 class AuthController extends Controller
 {
-    // GET /auth/login — show the form
+    // GET /auth/login. Show the form
     public function login(): void
     {
         if (Auth::check()) {
@@ -10,7 +10,7 @@ class AuthController extends Controller
         $this->view('auth/login');
     }
 
-    // POST /auth/authenticate — process the form
+    // POST /auth/authenticate. Process the form
     public function authenticate(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
