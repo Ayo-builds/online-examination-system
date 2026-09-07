@@ -17,6 +17,48 @@ class StudentController extends Controller
         ]);
     }
 
+    // GET /student/attempt/{examId}
+    //
+    // The instructions page that precedes an attempt. It is read-only: it
+    // starts nothing and writes nothing. The button on it posts to startExam,
+    // which still owns every gate that decides whether an attempt may begin.
+    public function attempt(string $examId = ''): void
+    {
+        $examId    = (int) $examId;
+        $studentId = (int) Auth::user()['id'];
+
+        $exam = (new Exam())->find($examId);
+        if ($exam === null || $exam['status'] !== 'published') {
+            $this->redirect('student/dashboard');
+        }
+
+        if (!(new Enrollment())->isEnrolled($studentId, (int) $exam['course_id'])) {
+            http_response_code(403);
+            exit('403. You are not enrolled in this course.');
+        }
+
+        // An attempt already under way goes back to the paper; a finished one
+        // goes to the review. Only a student with no attempt sees this page.
+        $existing = (new Attempt())->findByExamAndStudent($examId, $studentId);
+        if ($existing !== null) {
+            $this->redirect($existing['status'] === 'in_progress'
+                ? 'student/exam/' . (int) $existing['id']
+                : 'student/result/' . (int) $existing['id']);
+        }
+
+        $now    = time();
+        $course = (new Course())->find((int) $exam['course_id']);
+
+        $this->view('student/attempt', [
+            'user'   => Auth::user(),
+            'exam'   => $exam,
+            'course' => $course,
+            'now'    => $now,
+            'open'   => $now >= strtotime($exam['window_start'])
+                     && $now <= strtotime($exam['window_end']),
+        ]);
+    }
+
     // POST /student/startExam/{examId}
     public function startExam(string $examId = ''): void
     {
@@ -247,9 +289,20 @@ class StudentController extends Controller
             $this->redirect('student/dashboard');
         }
 
+        $exam = (new Exam())->find((int) $attempt['exam_id']);
+
+        // Correct answers stay hidden until the whole window has closed.
+        // Students sit at different times inside a window, so revealing them at
+        // submission would hand the first finisher an answer key for everyone
+        // still to sit the paper.
+        $canReview = $exam !== null && time() > strtotime($exam['window_end']);
+
         $this->view('student/result', [
-            'attempt' => $attempt,
-            'exam'    => (new Exam())->find((int) $attempt['exam_id']),
+            'attempt'    => $attempt,
+            'exam'       => $exam,
+            'answers'    => $attemptModel->reviewForAttempt($attemptId),
+            'can_review' => $canReview,
+            'max_marks'  => $attemptModel->maxMarks($attemptId),
         ]);
     }
 }

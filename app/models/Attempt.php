@@ -336,6 +336,64 @@ class Attempt extends Model
         return $rows;
     }
 
+    // Everything a student's own review needs: the frozen paper, what they
+    // chose, which option was correct, and what each answer earned.
+    //
+    // answersForGrading() carries the same columns but returns options in
+    // database order. A student reviewing their paper should see it in the
+    // order they actually sat it, so this rebuilds each MCQ from the frozen
+    // option_order the way questionsForAttempt() does.
+    public function reviewForAttempt(int $attemptId): array
+    {
+        $rows = $this->query(
+            "SELECT aq.question_id, aq.display_order, aq.option_order,
+                    q.question_type, q.question_text, q.marks,
+                    ans.selected_option_id, ans.essay_text, ans.awarded_marks
+             FROM attempt_questions aq
+             JOIN questions q ON q.id = aq.question_id
+             LEFT JOIN attempt_answers ans
+                    ON ans.attempt_id = aq.attempt_id AND ans.question_id = aq.question_id
+             WHERE aq.attempt_id = ?
+             ORDER BY aq.display_order",
+            [$attemptId]
+        )->fetchAll();
+
+        foreach ($rows as &$row) {
+            $row['options'] = [];
+
+            if ($row['question_type'] !== 'mcq') {
+                continue;
+            }
+
+            $all = $this->query(
+                "SELECT id, option_text, is_correct
+                 FROM question_options WHERE question_id = ?",
+                [(int) $row['question_id']]
+            )->fetchAll();
+
+            $byId = [];
+            foreach ($all as $o) {
+                $byId[(int) $o['id']] = $o;
+            }
+
+            $order = json_decode($row['option_order'] ?? '[]', true) ?: [];
+            foreach ($order as $optId) {
+                $optId = (int) $optId;
+                if (!isset($byId[$optId])) {
+                    continue;
+                }
+                $row['options'][] = [
+                    'id'         => $optId,
+                    'text'       => $byId[$optId]['option_text'],
+                    'is_correct' => (int) $byId[$optId]['is_correct'] === 1,
+                ];
+            }
+        }
+        unset($row);
+
+        return $rows;
+    }
+
     // Award marks to ONE essay answer, then recompute the attempt total atomically.
     public function gradeEssay(int $attemptId, int $questionId, float $marks): void
     {

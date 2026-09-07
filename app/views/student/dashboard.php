@@ -62,11 +62,12 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                         <span class="tag tag--muted">Window closed</span>
 
                     <?php else: ?>
-                        <form method="POST" action="<?= BASE_URL ?>student/startExam/<?= (int) $e['id'] ?>"
-                              onsubmit="return confirm('Start this exam now? Your <?= (int) $e['duration_minutes'] ?>-minute timer begins immediately and cannot be paused.');">
-                            <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
-                            <button type="submit" class="btn btn--primary btn--sm">Start exam</button>
-                        </form>
+                        <?php /* Goes to the instructions page, which is where the
+                                 attempt is actually started. startExam still owns
+                                 every gate; this link only shows the paper's terms
+                                 before the clock begins. */ ?>
+                        <a class="btn btn--primary btn--sm"
+                           href="<?= BASE_URL ?>student/attempt/<?= (int) $e['id'] ?>">Start exam</a>
                     <?php endif; ?>
                 </div>
             </div>

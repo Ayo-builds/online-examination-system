@@ -1425,3 +1425,94 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
 .quiz__summary-actions {
   display: flex; flex-direction: column; align-items: center; gap: 1rem;
 }
+
+/* ---- Intro page and review -------------------------------------------------
+   Shared shell with the runner. Both live under .quiz-page. */
+
+.quiz--narrow { max-width: 62rem; }
+
+.quiz__crumbs {
+  font-size: 0.875rem; color: var(--q-muted);
+  margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.4rem;
+}
+.quiz-page .quiz__crumbs a { color: var(--q-body); text-decoration: none; }
+.quiz-page .quiz__crumbs a:hover { color: var(--q-ink); text-decoration: underline; }
+
+.quiz__todo {
+  display: inline-block; background: #eceef1; color: var(--q-body);
+  border-radius: 50rem; padding: 0.4rem 0.9rem; font-size: 0.9rem; margin: 0 0 1.25rem;
+}
+.quiz__todo strong { color: var(--q-ink); font-weight: 700; }
+
+.quiz__rule { border: 0; border-top: 1px solid var(--q-line); margin: 1.25rem 0; }
+.quiz__window { margin: 0 0 0.35rem; color: var(--q-body); }
+.quiz__window strong { color: var(--q-ink); font-weight: 700; }
+
+.quiz-page .quiz__subhead {
+  font-family: inherit; font-size: 1.05rem; font-weight: 700;
+  color: var(--q-ink); margin: 0 0 0.85rem; letter-spacing: normal;
+}
+.quiz__prose { color: var(--q-body); margin-bottom: 1.75rem; }
+
+.quiz__start { display: flex; flex-direction: column; gap: 1.5rem; align-items: flex-start; }
+.quiz__closed { margin: 0; color: var(--q-muted); font-style: italic; }
+.quiz__facts { display: grid; gap: 0.5rem 2rem; margin: 0; width: 100%; }
+@media (min-width: 40rem) { .quiz__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.quiz__facts > div { display: flex; justify-content: space-between; gap: 1rem;
+                     border-top: 1px solid var(--q-line); padding-top: 0.5rem; }
+.quiz__facts dt { color: var(--q-muted); margin: 0; }
+.quiz__facts dd { color: var(--q-ink); font-weight: 600; margin: 0; }
+
+.quiz__back { margin-top: 1.75rem; font-size: 0.95rem; }
+.quiz-page .quiz__back a { color: var(--q-body); }
+
+.quiz__notice {
+  background: #fff8e1; border: 1px solid #ffe082; border-radius: var(--q-radius-panel);
+  padding: 0.85rem 1.1rem; margin: 1.25rem 0 0; color: #7a5b12; font-size: 0.95rem;
+}
+.quiz__unanswered { margin: 0.75rem 0 0; color: var(--q-muted); font-style: italic; }
+
+.quiz-page .review-table {
+  width: 100%; border-collapse: collapse; margin: 0 0 1.5rem;
+  border: 1px solid var(--q-panel-line); font-size: 1rem; background: #fff;
+}
+.quiz-page .review-table th {
+  width: 34%; background: var(--q-panel); color: var(--q-ink);
+  font-family: inherit; font-size: 1rem; font-weight: 700;
+  letter-spacing: normal; text-transform: none;
+  text-align: right; padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--q-panel-line);
+}
+.quiz-page .review-table td {
+  padding: 0.85rem 1.25rem; color: var(--q-body);
+  border-bottom: 1px solid var(--q-line);
+}
+.quiz-page .review-table tr:last-child th,
+.quiz-page .review-table tr:last-child td { border-bottom: 0; }
+.quiz-page .review-table strong { color: var(--q-ink); font-weight: 700; }
+
+.review-essay {
+  background: #fff; border: 1px solid var(--q-panel-line);
+  border-radius: var(--q-radius-panel); padding: 0.85rem 1rem; color: var(--q-body);
+}
+
+/* Review options are static, so the radio is drawn rather than an input. */
+.quiz-page .opt--review { cursor: default; grid-template-columns: auto auto minmax(0, 1fr) auto; }
+.opt__radio {
+  width: 1rem; height: 1rem; margin-top: 0.28rem; flex: none;
+  border: 1px solid var(--q-muted); border-radius: 50%; background: #fff;
+}
+.opt__radio--on { border-color: var(--q-ink); border-width: 5px; }
+.opt__mark { font-weight: 700; line-height: 1.4; }
+.opt__mark--ok { color: #1f7a6b; }
+.opt__mark--no { color: #b3261e; }
+.quiz-page .opt--correct .opt__text { color: var(--q-ink); font-weight: 600; }
+
+.quiz-page .qnav__box--correct   { background: #e6f4ef; border-color: #1f7a6b; color: #14584c; }
+.quiz-page .qnav__box--incorrect { background: #fbeceb; border-color: #b3261e; color: #8f1e18; }
+
+.review-grade {
+  font-family: inherit; font-variant-numeric: tabular-nums;
+  font-size: 1.75rem; font-weight: 700; line-height: 1;
+  color: var(--q-ink); letter-spacing: -0.01em;
+}
