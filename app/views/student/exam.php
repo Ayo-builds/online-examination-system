@@ -34,11 +34,13 @@
 
             <div class="quiz__panel">
 
-                <a class="qbtn qbtn--ghost" href="<?= BASE_URL ?>student/dashboard">Back</a>
-
                 <form id="exam-form" method="POST"
                       action="<?= BASE_URL ?>student/submitExam/<?= (int) $attempt['id'] ?>">
                     <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
+
+                    <div id="quiz-questions">
+
+                    <a class="qbtn qbtn--ghost" href="<?= BASE_URL ?>student/dashboard">Back</a>
 
                     <?php foreach ($questions as $q): ?>
                     <?php $qid = (int) $q['question_id']; $num = (int) $q['display_order']; ?>
@@ -92,8 +94,36 @@
                     <?php endforeach; ?>
 
                     <div class="quiz__finish">
-                        <button type="submit" class="qbtn qbtn--primary">Finish attempt &hellip;</button>
+                        <button type="button" id="to-summary" class="qbtn qbtn--primary">Finish attempt &hellip;</button>
                     </div>
+
+                    </div><!-- /#quiz-questions -->
+
+                    <?php /* The step between "Finish attempt" and the real submission.
+                             Built from this page rather than a round trip, so no new
+                             route is needed. The answers stay inside the form the whole
+                             time: hidden, but still submitted. */ ?>
+                    <section id="quiz-summary" class="quiz__summary" hidden>
+
+                        <button type="button" class="qbtn qbtn--ghost js-return">Back</button>
+
+                        <h2 class="quiz__title">
+                            <?= htmlspecialchars($attempt['course_code']) ?> &ndash; <?= htmlspecialchars($attempt['exam_title']) ?>
+                        </h2>
+                        <h2>Summary of attempt</h2>
+
+                        <table class="summary-table">
+                            <thead>
+                                <tr><th class="sum-q">Question</th><th>Status</th></tr>
+                            </thead>
+                            <tbody id="summary-rows"></tbody>
+                        </table>
+
+                        <div class="quiz__summary-actions">
+                            <button type="button" class="qbtn qbtn--ghost js-return">Return to attempt</button>
+                            <button type="submit" class="qbtn qbtn--primary">Submit all and finish</button>
+                        </div>
+                    </section>
                 </form>
             </div>
 
@@ -214,6 +244,44 @@
             });
         }
         markAnswered();
+
+        // ---------- Summary of attempt ----------
+        // A view over the same form, not a separate page. Hiding the questions
+        // leaves their inputs in the form, so the submission is unchanged.
+        const questionsWrap = document.getElementById('quiz-questions');
+        const summaryEl     = document.getElementById('quiz-summary');
+        const summaryRows   = document.getElementById('summary-rows');
+
+        function buildSummary() {
+            summaryRows.textContent = '';
+            document.querySelectorAll('.question-card').forEach(card => {
+                const num   = card.id.replace('q', '');
+                const radio = card.querySelector('input[type=radio]:checked');
+                const essay = card.querySelector('textarea');
+                const done  = !!radio || (essay && essay.value.trim().length > 0);
+
+                const tr = document.createElement('tr');
+                const q  = document.createElement('td');
+                const s  = document.createElement('td');
+                q.className = 'sum-q';
+                q.textContent = num;
+                s.textContent = done ? 'Answer saved' : 'Not yet answered';
+                tr.append(q, s);
+                summaryRows.appendChild(tr);
+            });
+        }
+
+        function showSummary(on) {
+            if (on) { buildSummary(); }
+            questionsWrap.hidden = on;
+            summaryEl.hidden     = !on;
+            window.scrollTo(0, 0);
+        }
+
+        document.getElementById('to-summary').addEventListener('click', () => showSummary(true));
+        document.querySelectorAll('.js-return').forEach(b => {
+            b.addEventListener('click', () => showSummary(false));
+        });
 
         // ---------- Flagging ----------
         // Kept on this device only, so a reload does not lose it. It is a reading

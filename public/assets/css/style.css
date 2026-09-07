@@ -1391,3 +1391,37 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   font-size: 1rem;
   color: var(--q-body);
 }
+
+/* ---- Summary of attempt ----------------------------------------------------
+   The step between "Finish attempt" and the real submission. Rendered from the
+   DOM on this page rather than a round trip, so no new route is needed. The
+   answers stay inside the form the whole time, hidden but still submitted. */
+
+.quiz-page .quiz__summary h2 {
+  font-family: inherit; font-size: 1.5rem; font-weight: 700;
+  color: var(--q-ink); letter-spacing: -0.01em; margin: 0 0 1rem;
+}
+.quiz-page .quiz__summary .quiz__title { margin-bottom: 0.25rem; }
+
+.quiz-page .summary-table {
+  width: 100%; border-collapse: collapse; margin: 0 0 2rem;
+  border: 1px solid var(--q-panel-line); border-radius: 0;
+  font-size: 1rem; background: #fff;
+}
+.quiz-page .summary-table th {
+  background: var(--q-panel); color: var(--q-body);
+  font-family: inherit; font-size: 1rem; font-weight: 400;
+  letter-spacing: normal; text-transform: none;
+  text-align: left; padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--q-panel-line);
+}
+.quiz-page .summary-table td {
+  padding: 1rem 1.25rem; color: var(--q-body);
+  border-top: 1px solid var(--q-line); vertical-align: middle;
+}
+.quiz-page .summary-table tbody tr:hover { background: transparent; }
+.quiz-page .summary-table .sum-q { width: 40%; }
+
+.quiz__summary-actions {
+  display: flex; flex-direction: column; align-items: center; gap: 1rem;
+}
