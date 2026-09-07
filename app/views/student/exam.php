@@ -6,71 +6,119 @@
     <title>Exam in progress · <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
-<body>
-    <main class="exam-shell">
+<body class="quiz-page">
+    <main class="quiz">
 
-        <div id="exam-bar">
-            <div class="exam-bar__id">
-                <span class="exam-bar__code"><?= htmlspecialchars($attempt['course_code']) ?></span>
-                <span class="exam-bar__title"><?= htmlspecialchars($attempt['exam_title']) ?></span>
-
-                <button type="button" id="fs-btn"
-                    onclick="document.documentElement.requestFullscreen && document.documentElement.requestFullscreen()">
-                Fullscreen
-            </button>
-            </div>
-
-            <div id="timer">
-                --:--
-            </div>
-        </div>
+        <header class="quiz__head">
+            <span class="quiz__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                    <path d="M7 8.5l1.5 1.5L11 7"></path>
+                    <path d="M7 15.5L8.5 17 11 14"></path>
+                    <path d="M14 9h4M14 16h4"></path>
+                </svg>
+            </span>
+            <h1 class="quiz__title">
+                <?= htmlspecialchars($attempt['course_code']) ?> &ndash; <?= htmlspecialchars($attempt['exam_title']) ?>
+            </h1>
+        </header>
 
         <?php if (!empty($attempt['instructions'])): ?>
-        <div class="exam-instructions">
+        <div class="quiz__instructions">
             <?= nl2br(htmlspecialchars($attempt['instructions'])) ?>
         </div>
         <?php endif; ?>
 
-        <form id="exam-form" method="POST"
-              action="<?= BASE_URL ?>student/submitExam/<?= (int) $attempt['id'] ?>">
-            <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
+        <div class="quiz__body">
 
-            <?php foreach ($questions as $i => $q): ?>
-            <div class="question-card">
-                <?php /* Must remain the FIRST child div: flashSaved() appends the saved tag here. */ ?>
-                <div class="question-card__meta">
-                    <span>Question <?= (int) $q['display_order'] ?></span>
-                    <span><?= htmlspecialchars($q['marks']) ?> mark(s)</span>
+            <div class="quiz__panel">
+
+                <a class="qbtn qbtn--ghost" href="<?= BASE_URL ?>student/dashboard">Back</a>
+
+                <form id="exam-form" method="POST"
+                      action="<?= BASE_URL ?>student/submitExam/<?= (int) $attempt['id'] ?>">
+                    <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
+
+                    <?php foreach ($questions as $q): ?>
+                    <?php $qid = (int) $q['question_id']; $num = (int) $q['display_order']; ?>
+                    <div class="question-card" id="q<?= $num ?>">
+
+                        <?php /* Must remain the FIRST child div: flashSaved() appends the saved tag here. */ ?>
+                        <div class="question-card__meta">
+                            <p class="qmeta__num">Question <b><?= $num ?></b></p>
+                            <p class="qmeta__state">Not yet answered</p>
+                            <p class="qmeta__marks">Marked out of <?= htmlspecialchars($q['marks']) ?></p>
+                            <button type="button" class="qmeta__flag"
+                                    data-flag="<?= $num ?>" aria-pressed="false">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                                    <line x1="4" y1="22" x2="4" y2="15"></line>
+                                </svg>
+                                Flag question
+                            </button>
+                        </div>
+
+                        <div class="question-card__body">
+                            <p class="question-card__text">
+                                <?= nl2br(htmlspecialchars($q['question_text'])) ?>
+                            </p>
+
+                            <?php if ($q['question_type'] === 'mcq'): ?>
+                                <p class="qbody__select">Select one:</p>
+                                <div class="opts">
+                                    <?php foreach ($q['options'] as $i => $opt): ?>
+                                    <label class="opt">
+                                        <input type="radio"
+                                               name="answer[<?= $qid ?>]"
+                                               value="<?= (int) $opt['id'] ?>"
+                                               data-question="<?= $qid ?>"
+                                               <?= (int) $q['selected_option_id'] === (int) $opt['id'] ? 'checked' : '' ?>>
+                                        <span class="opt__letter"><?= chr(97 + $i) ?>.</span>
+                                        <span class="opt__text"><?= htmlspecialchars($opt['text']) ?></span>
+                                    </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <textarea name="answer[<?= $qid ?>]"
+                                          data-question="<?= $qid ?>"
+                                          rows="8" placeholder="Type your answer&hellip;"
+                                          class="essay-input"><?= htmlspecialchars($q['essay_text'] ?? '') ?></textarea>
+                            <?php endif; ?>
+                        </div>
+
+                    </div>
+                    <?php endforeach; ?>
+
+                    <div class="quiz__finish">
+                        <button type="submit" class="qbtn qbtn--primary">Finish attempt &hellip;</button>
+                    </div>
+                </form>
+            </div>
+
+            <aside class="quiz__nav" aria-label="Quiz navigation">
+                <h2>Quiz navigation</h2>
+
+                <div class="qnav__grid">
+                    <?php foreach ($questions as $q): ?>
+                    <?php $n = (int) $q['display_order']; ?>
+                    <a class="qnav__box" href="#q<?= $n ?>" data-nav="<?= $n ?>"><?= $n ?></a>
+                    <?php endforeach; ?>
                 </div>
 
-                <p class="question-card__text">
-                    <?= nl2br(htmlspecialchars($q['question_text'])) ?>
-                </p>
+                <div class="qnav__meta">
+                    <p class="qnav__label">Time remaining</p>
+                    <div id="timer">--:--</div>
 
-                <?php if ($q['question_type'] === 'mcq'): ?>
-                    <div class="opts">
-                        <?php foreach ($q['options'] as $opt): ?>
-                        <label class="opt">
-                            <input type="radio"
-                                   name="answer[<?= (int) $q['question_id'] ?>]"
-                                   value="<?= (int) $opt['id'] ?>"
-                                   data-question="<?= (int) $q['question_id'] ?>"
-                                   <?= (int) $q['selected_option_id'] === (int) $opt['id'] ? 'checked' : '' ?>>
-                            <span><?= htmlspecialchars($opt['text']) ?></span>
-                        </label>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <textarea name="answer[<?= (int) $q['question_id'] ?>]"
-                              data-question="<?= (int) $q['question_id'] ?>"
-                              rows="6" placeholder="Type your answer…"
-                              class="essay-input"><?= htmlspecialchars($q['essay_text'] ?? '') ?></textarea>
-                <?php endif; ?>
-            </div>
-            <?php endforeach; ?>
+                    <button type="button" id="fs-btn"
+                        onclick="document.documentElement.requestFullscreen &amp;&amp; document.documentElement.requestFullscreen()">
+                        Enter fullscreen
+                    </button>
+                </div>
+            </aside>
 
-            <button type="submit" class="btn btn--primary exam-submit">Submit exam</button>
-        </form>
+        </div>
     </main>
 
    <script>
@@ -131,6 +179,7 @@
         document.querySelectorAll('input[type=radio][data-question]').forEach(r => {
             r.addEventListener('change', () => {
                 saveAnswer(r.dataset.question, r.value, null);
+                markAnswered();
             });
         });
 
@@ -138,6 +187,7 @@
         document.querySelectorAll('textarea[data-question]').forEach(t => {
             let timer = null;
             t.addEventListener('input', () => {
+                markAnswered();
                 clearTimeout(timer);
                 timer = setTimeout(() => {
                     saveAnswer(t.dataset.question, null, t.value);
@@ -145,6 +195,52 @@
             });
         });
 
+        // ---------- Navigation block state ----------
+        // Presentation only. Nothing here is sent to the server, and nothing here
+        // decides a grade; the server remains the sole authority on both.
+        function markAnswered() {
+            document.querySelectorAll('.question-card').forEach(card => {
+                const num  = card.id.replace('q', '');
+                const box  = document.querySelector('[data-nav="' + num + '"]');
+                const meta = card.querySelector('.qmeta__state');
+                if (!box) return;
+
+                const radio = card.querySelector('input[type=radio]:checked');
+                const essay = card.querySelector('textarea');
+                const done  = !!radio || (essay && essay.value.trim().length > 0);
+
+                box.classList.toggle('qnav__box--answered', done);
+                if (meta) meta.textContent = done ? 'Answer saved' : 'Not yet answered';
+            });
+        }
+        markAnswered();
+
+        // ---------- Flagging ----------
+        // Kept on this device only, so a reload does not lose it. It is a reading
+        // aid for the candidate and is never transmitted or graded.
+        const flagKey = 'exam-flags-<?= (int) $attempt['id'] ?>';
+        let flags = [];
+        try { flags = JSON.parse(localStorage.getItem(flagKey) || '[]'); } catch (e) { flags = []; }
+
+        function paintFlags() {
+            document.querySelectorAll('[data-flag]').forEach(btn => {
+                const n  = btn.dataset.flag;
+                const on = flags.includes(n);
+                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+                btn.lastChild.textContent = on ? ' Remove flag' : ' Flag question';
+                const box = document.querySelector('[data-nav="' + n + '"]');
+                if (box) box.classList.toggle('qnav__box--flagged', on);
+            });
+        }
+        document.querySelectorAll('[data-flag]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const n = btn.dataset.flag;
+                flags = flags.includes(n) ? flags.filter(x => x !== n) : flags.concat(n);
+                try { localStorage.setItem(flagKey, JSON.stringify(flags)); } catch (e) {}
+                paintFlags();
+            });
+        });
+        paintFlags();
 
       // ---------- Anti-cheat monitor ----------
         const logUrl = '<?= BASE_URL ?>student/logActivity/<?= (int) $attempt['id'] ?>';
