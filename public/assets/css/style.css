@@ -1140,87 +1140,102 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
 /* =============================================================================
    Quiz runner (student exam)
    -----------------------------------------------------------------------------
-   A Moodle-Boost-shaped layout: a meta rail per question, the question itself in
-   a tinted panel, and a navigation block on the right.
+   Layout and values taken from the live Moodle theme (Edwiser RemUI) at
+   lms.miva.university, read out of /theme/styles.php/remui/1/all rather than
+   estimated from screenshots. The values below are the theme's own:
 
-   Every selector is scoped under .quiz-page. The app already defines
-   .question-card, .question-card__meta, .opt and .saved-tag for the older runner
-   at the same specificity, so an unscoped rule here would win only on the
-   properties it happens to declare and let font-family, text-transform, border
-   and background leak through from the older block. The prefix plus the explicit
-   resets below close that off.
+     --bs-body-font-family : Manrope, -apple-system, ...
+     --bs-body-font-size   : 1rem
+     --bs-body-line-height : 1.571
+     --bs-body-color       : #4c5a73
+     --bs-body-bg          : #f5f9fd
+     --bs-border-color     : #d5ddea
+     --bs-btn-border-radius: 5px
+     .btn-primary          : background #0a3150, border #0a3150, color #fff
+     .que .info            : 7em wide, #f8f9fa on 1px #bdcade, radius 2px
+     .que .formulation     : #eee on 1px #dcdcdc, padding 1rem 1.5rem, radius 4px
+     .qnbutton             : 30x40px, radius 3px, 14px/20px, weight 400
+     --activityassessment  : #f90086  (the quiz activity icon)
 
-   Hexes and sizes are read from reference screenshots, not a live stylesheet.
-   Treat them as close approximations rather than measured truth.
+   Everything is scoped under .quiz-page. The app already defines
+   .question-card, .question-card__meta, .opt and .saved-tag for the older
+   runner at the same specificity, so an unscoped rule here would win only on
+   the properties it declares and let font-family, text-transform, border and
+   background leak through. The prefix plus the explicit resets close that off.
    ========================================================================== */
 
 @font-face {
-  font-family: "Figtree";
-  src: url("../../marketing/assets/fonts/figtree-300-900.woff2") format("woff2-variations");
-  font-weight: 300 900;
+  font-family: "Manrope";
+  src: url("../../marketing/assets/fonts/manrope-200-800.woff2") format("woff2-variations");
+  font-weight: 200 800;
   font-style: normal;
   font-display: swap;
 }
 
 .quiz-page {
-  --q-ink:        #1f2d4d;
-  --q-body:       #46536b;
+  --q-ink:        #0a3150;   /* .btn-primary background, headings */
+  --q-body:       #4c5a73;   /* --bs-body-color */
   --q-muted:      #6b7789;
-  --q-page:       #f7f8fa;
+  --q-page:       #f5f9fd;   /* --bs-body-bg */
   --q-surface:    #ffffff;
-  --q-panel:      #e9ebee;
-  --q-panel-line: #d8dce1;
-  --q-line:       #e3e6ea;
-  --q-accent:     #e6007e;
-  --q-radius:     8px;
-  --q-radius-sm:  4px;
+  --q-meta:       #f8f9fa;   /* .que .info background */
+  --q-meta-line:  #bdcade;   /* .que .info border */
+  --q-panel:      #eeeeee;   /* .que .formulation background */
+  --q-panel-line: #dcdcdc;   /* .que .formulation border */
+  --q-line:       #d5ddea;   /* --bs-border-color */
+  --q-accent:     #f90086;   /* --activityassessment */
+  --q-radius:     5px;       /* --bs-btn-border-radius */
+  --q-radius-sm:  3px;       /* .qnbutton */
+  --q-radius-xs:  2px;       /* .que .info */
+  --q-radius-panel: 4px;     /* --bs-border-radius */
 
   margin: 0;
   background: var(--q-page);
   color: var(--q-body);
-  font-family: "Figtree", "IBM Plex Sans", system-ui, sans-serif;
-  font-size: 16px;
-  line-height: 1.6;
+  font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Inter,
+               "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.571;
 }
 
 .quiz { max-width: 1400px; margin-inline: auto; padding: 1.5rem clamp(1rem, 3vw, 2rem) 4rem; }
 
-.quiz__head { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1.5rem; }
+.quiz__head { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
 .quiz__icon { flex: none; color: var(--q-accent); display: block; }
-.quiz__icon svg { width: 1.75rem; height: 1.75rem; }
+.quiz__icon svg { width: 1.6rem; height: 1.6rem; }
 .quiz__title {
   font-family: inherit;
-  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  font-size: clamp(1.3rem, 2.1vw, 1.65rem);
   font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.012em;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
   color: var(--q-ink);
   margin: 0;
 }
 
 .quiz__body { display: grid; gap: 1.5rem; align-items: start; }
-@media (min-width: 62rem) { .quiz__body { grid-template-columns: minmax(0, 1fr) 19rem; } }
+@media (min-width: 62rem) { .quiz__body { grid-template-columns: minmax(0, 1fr) 18rem; } }
 
 .quiz__panel {
   background: var(--q-surface);
   border: 1px solid var(--q-line);
-  border-radius: 12px;
-  padding: clamp(1rem, 2.5vw, 1.75rem);
+  border-radius: 8px;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
 }
 
 .quiz-page .qbtn {
   display: inline-flex; align-items: center; justify-content: center;
-  font-family: inherit; font-size: 0.95rem; font-weight: 600; line-height: 1;
+  font-family: inherit; font-size: 1rem; font-weight: 600; line-height: 1.5;
   letter-spacing: normal; text-transform: none;
-  padding: 0.85rem 1.4rem; min-height: 2.75rem; width: auto;
+  padding: 0.5rem 1rem; min-height: 2.5rem; width: auto;
   border-radius: var(--q-radius); border: 1px solid transparent;
   text-decoration: none; cursor: pointer; white-space: nowrap;
-  transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
 }
 .quiz-page .qbtn--primary { background: var(--q-ink); color: #fff; border-color: var(--q-ink); }
-.quiz-page .qbtn--primary:hover { background: #16223c; border-color: #16223c; color: #fff; }
-.quiz-page .qbtn--ghost { background: var(--q-surface); color: var(--q-ink); border-color: var(--q-ink); }
-.quiz-page .qbtn--ghost:hover { background: #f0f2f5; color: var(--q-ink); }
+.quiz-page .qbtn--primary:hover { background: #072541; border-color: #072541; color: #fff; }
+.quiz-page .qbtn--ghost { background: #fff; color: var(--q-ink); border-color: var(--q-ink); }
+.quiz-page .qbtn--ghost:hover { background: #f0f3f8; color: var(--q-ink); }
 
 /* ---- question ---- */
 .quiz-page .question-card {
@@ -1229,70 +1244,70 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   background: none; border: 0; border-radius: 0; padding: 0;
 }
 @media (min-width: 48rem) {
-  .quiz-page .question-card { grid-template-columns: 10.5rem minmax(0, 1fr); }
+  .quiz-page .question-card { grid-template-columns: 8.5rem minmax(0, 1fr); }
 }
 
 /* FIRST child div. flashSaved() appends .saved-tag here, so it must stay first. */
 .quiz-page .question-card__meta {
-  display: flex; flex-direction: column; gap: 0.3rem;
+  display: flex; flex-direction: column; gap: 0.45rem;
   justify-content: flex-start;
-  border: 1px solid var(--q-line);
-  border-radius: var(--q-radius-sm);
-  background: var(--q-surface);
-  padding: 0.85rem 1rem;
+  border: 1px solid var(--q-meta-line);
+  border-radius: var(--q-radius-xs);
+  background: var(--q-meta);
+  padding: 0.5rem 0.6rem;
   align-self: start;
   font-family: inherit;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   line-height: 1.5;
   letter-spacing: normal;
   text-transform: none;
   color: var(--q-muted);
 }
-.quiz-page .qmeta__num { color: var(--q-ink); font-weight: 600; margin: 0; }
-.quiz-page .qmeta__num b { font-weight: 700; font-size: 1.05rem; }
+.quiz-page .qmeta__num { color: var(--q-ink); font-weight: 600; margin: 0; font-size: 0.875rem; }
+.quiz-page .qmeta__num b { font-weight: 700; }
 .quiz-page .qmeta__state,
 .quiz-page .qmeta__marks { color: var(--q-muted); margin: 0; }
 .quiz-page .qmeta__flag {
-  display: inline-flex; align-items: center; gap: 0.35rem;
-  background: none; border: 0; padding: 0; margin-top: 0.2rem; width: auto;
-  min-height: 0; font: inherit; font-size: 0.875rem;
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: none; border: 0; padding: 0; margin: 0; width: auto;
+  min-height: 0; font: inherit; font-size: 0.8rem;
   color: #2f6fb0; cursor: pointer; text-align: left;
 }
-.quiz-page .qmeta__flag svg { width: 0.9rem; height: 0.9rem; flex: none; }
+.quiz-page .qmeta__flag svg { width: 0.85rem; height: 0.85rem; flex: none; }
 .quiz-page .qmeta__flag[aria-pressed="true"] { color: #b3261e; font-weight: 600; }
 .quiz-page .saved-tag {
-  font-family: inherit; font-size: 0.8125rem; font-weight: 600;
-  letter-spacing: normal; color: #1f7a6b; margin-top: 0.2rem;
+  font-family: inherit; font-size: 0.75rem; font-weight: 600;
+  letter-spacing: normal; color: #1f7a6b; margin: 0;
 }
 
 .quiz-page .question-card__body {
   background: var(--q-panel);
   border: 1px solid var(--q-panel-line);
-  border-radius: var(--q-radius);
-  padding: 1.5rem;
+  border-radius: var(--q-radius-panel);
+  padding: 1rem 1.5rem;
 }
 .quiz-page .question-card__text {
-  font-size: 1.0625rem;
+  font-size: 1rem;
   font-weight: 400;
-  line-height: 1.55;
-  color: var(--q-ink);
-  margin: 0 0 2.25rem;
+  line-height: 1.571;
+  color: var(--q-body);
+  margin: 0 0 2rem;
 }
-.quiz-page .qbody__select { font-size: 0.95rem; color: var(--q-body); margin: 0 0 0.85rem; }
+.quiz-page .qbody__select { font-size: 1rem; color: var(--q-body); margin: 0 0 0.6rem; }
 
 /* Options carry no box of their own: radio, letter, text. */
-.quiz-page .opts { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0; }
+.quiz-page .opts { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0; }
 .quiz-page .opt {
   display: grid; grid-template-columns: auto auto minmax(0, 1fr);
-  gap: 0.6rem; align-items: start;
+  gap: 0.55rem; align-items: start;
   background: none; border: 0; border-radius: 0; padding: 0; margin: 0;
-  font-family: inherit; font-size: 1rem; font-weight: 400; line-height: 1.5;
+  font-family: inherit; font-size: 1rem; font-weight: 400; line-height: 1.571;
   color: var(--q-body); cursor: pointer;
 }
 .quiz-page .opt:hover { background: none; border: 0; }
 .quiz-page .opt:has(input:checked) { background: none; border: 0; }
 .quiz-page .opt input {
-  width: 1.05rem; height: 1.05rem; margin: 0.2rem 0 0;
+  width: 1rem; height: 1rem; margin: 0.28rem 0 0;
   accent-color: var(--q-ink); flex: none;
 }
 .quiz-page .opt__letter { color: var(--q-body); }
@@ -1300,19 +1315,19 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
 
 .quiz-page .essay-input {
   width: 100%; min-height: 11rem; margin-top: 0;
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--q-panel-line); border-radius: var(--q-radius);
-  background: var(--q-surface); color: var(--q-body);
-  font-family: inherit; font-size: 1rem; line-height: 1.6; resize: vertical;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--q-panel-line); border-radius: var(--q-radius-panel);
+  background: #fff; color: var(--q-body);
+  font-family: inherit; font-size: 1rem; line-height: 1.571; resize: vertical;
 }
 
-.quiz__finish { display: flex; justify-content: flex-end; margin-top: 1.75rem; }
+.quiz__finish { display: flex; justify-content: flex-end; margin-top: 1.5rem; }
 
 /* ---- navigation block ---- */
 .quiz__nav {
   background: var(--q-surface);
   border: 1px solid var(--q-line);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 1.25rem;
 }
 @media (min-width: 62rem) { .quiz__nav { position: sticky; top: 1.5rem; } }
@@ -1321,24 +1336,24 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   font-size: 1.25rem; font-weight: 700; color: var(--q-ink);
   letter-spacing: -0.01em; margin: 0 0 1rem;
 }
-.qnav__grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; }
+.qnav__grid { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.25rem; }
 .quiz-page .qnav__box {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 2.5rem; height: 2.5rem;
+  width: 30px; height: 40px;
   border: 1px solid var(--q-ink); border-radius: var(--q-radius-sm);
-  background: var(--q-surface); color: var(--q-ink);
-  font-family: inherit; font-size: 0.875rem; font-weight: 500;
+  background: var(--q-page); color: var(--q-ink);
+  font-family: inherit; font-size: 14px; font-weight: 400; line-height: 20px;
   text-decoration: none;
   transition: background-color .15s ease, color .15s ease;
 }
-.quiz-page .qnav__box:hover { background: #eef1f5; color: var(--q-ink); }
+.quiz-page .qnav__box:hover { background: #e6edf7; color: var(--q-ink); }
 .quiz-page .qnav__box--answered { background: var(--q-ink); color: #fff; }
-.quiz-page .qnav__box--answered:hover { background: #16223c; color: #fff; }
+.quiz-page .qnav__box--answered:hover { background: #072541; color: #fff; }
 .quiz-page .qnav__box--flagged { position: relative; }
 .quiz-page .qnav__box--flagged::after {
   content: ""; position: absolute; top: -3px; right: -3px;
   width: 8px; height: 8px; border-radius: 50%;
-  background: #b3261e; border: 1.5px solid var(--q-surface);
+  background: var(--q-accent); border: 1.5px solid var(--q-surface);
 }
 
 .qnav__meta { border-top: 1px solid var(--q-line); padding-top: 1rem; }
@@ -1359,7 +1374,7 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
 .quiz-page #fs-btn {
   display: block; width: 100%; margin: 0.75rem 0 0;
   background: none; border: 1px solid var(--q-line); border-radius: var(--q-radius);
-  padding: 0.6rem; min-height: 2.5rem;
+  padding: 0.5rem; min-height: 2.25rem;
   font-family: inherit; font-size: 0.8125rem; font-weight: 600;
   letter-spacing: normal; text-transform: none;
   color: var(--q-muted); cursor: pointer;
@@ -1370,9 +1385,9 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   background: var(--q-surface);
   border: 1px solid var(--q-line);
   border-left: 3px solid var(--q-ink);
-  border-radius: var(--q-radius);
+  border-radius: var(--q-radius-panel);
   padding: 1rem 1.25rem;
   margin-bottom: 1.5rem;
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--q-body);
 }
