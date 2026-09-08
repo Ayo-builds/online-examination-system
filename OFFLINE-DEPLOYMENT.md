@@ -445,6 +445,275 @@ does not pause.
 
 ---
 
+## Hardening: keep non-public files out of the web root
+
+Applies to Windows and Linux equally. Do this before the server is live.
+
+The layout in step 2 puts the whole repository inside the web root, so
+everything in it is reachable by URL, not just `public/`. Verify on the server:
+
+```
+curl -I http://localhost/exam-system/database/schema.sql
+```
+
+If that returns `200`, your full database schema is downloadable by anyone on
+the LAN. `README.md` is too.
+
+PHP files are less exposed, because Apache executes them rather than serving
+their text, so `config/config.php` returns an empty body rather than your
+credentials. But that safety depends entirely on PHP still working. If the PHP
+module is ever disabled or an upgrade half-fails, Apache falls back to serving
+`.php` files as plain text, and the database password goes with them.
+
+Pick one of these two fixes.
+
+### Option A: point the document root at `public/` (preferred)
+
+This is the layout the application was designed for, and it puts `config/`,
+`app/` and `database/` genuinely outside the web root rather than merely
+awkward to reach.
+
+**Linux, Apache:** edit `/etc/apache2/sites-available/000-default.conf`
+(Debian/Ubuntu) or `/etc/httpd/conf/httpd.conf` (RHEL/Fedora):
+
+```apache
+DocumentRoot /var/www/html/exam-system/public
+
+<Directory /var/www/html/exam-system/public>
+    AllowOverride All
+    Require all granted
+</Directory>
+```
+
+**Windows XAMPP:** in `C:\xampp\apache\conf\httpd.conf`, change the two
+`DocumentRoot` and `<Directory>` lines near line 250 to
+`C:/xampp/htdocs/exam-system/public`.
+
+Then in `config/config.php`:
+
+```php
+define('BASE_URL', '/');
+```
+
+Clients now use `http://192.168.1.50/` with no path. Restart Apache.
+
+### Option B: keep the layout, deny the sensitive directories
+
+Less clean, but it does not touch Apache's configuration. Create three files:
+
+**Linux:**
+
+```
+cd /var/www/html/exam-system
+printf 'Require all denied\n' | sudo tee config/.htaccess app/.htaccess database/.htaccess
+```
+
+**Windows**, in a Command Prompt:
+
+```
+cd C:\xampp\htdocs\exam-system
+echo Require all denied> config\.htaccess
+echo Require all denied> app\.htaccess
+echo Require all denied> database\.htaccess
+```
+
+`public/.htaccess` is unaffected, so routing keeps working.
+
+Confirm either fix worked:
+
+```
+curl -I http://localhost/exam-system/database/schema.sql
+```
+
+Option A gives `404`. Option B gives `403`. Anything else means it did not take.
+
+---
+
+## Appendix: installing on Linux
+
+The steps above are the Windows XAMPP path, which is what this app is developed
+against. Everything below maps those same steps onto Linux. The application code
+is identical; only paths, service commands and permissions differ.
+
+Two routes. **Prefer distribution packages** for a server that stays up: they get
+security updates and start on boot without extra work. Use XAMPP for Linux only
+if you want the same layout as the Windows machine.
+
+### Path equivalents
+
+| | Windows XAMPP | Distro LAMP | XAMPP for Linux |
+|---|---|---|---|
+| App files | `C:\xampp\htdocs\exam-system` | `/var/www/html/exam-system` | `/opt/lampp/htdocs/exam-system` |
+| Apache config | `C:\xampp\apache\conf\httpd.conf` | `/etc/apache2/apache2.conf` | `/opt/lampp/etc/httpd.conf` |
+| PHP binary | `C:\xampp\php\php.exe` | `/usr/bin/php` | `/opt/lampp/bin/php` |
+| MySQL client | `C:\xampp\mysql\bin\mysql.exe` | `/usr/bin/mariadb` | `/opt/lampp/bin/mysql` |
+| Dump tool | `C:\xampp\mysql\bin\mysqldump.exe` | `/usr/bin/mariadb-dump` | `/opt/lampp/bin/mysqldump` |
+| Web server user | (not applicable) | `www-data` (Debian), `apache` (RHEL) | `daemon` |
+| Start / stop | XAMPP Control Panel | `systemctl` | `/opt/lampp/lampp` |
+
+### Route 1: distribution packages
+
+**Debian or Ubuntu:**
+
+```
+sudo apt update
+sudo apt install apache2 mariadb-server php php-mysql libapache2-mod-php
+sudo systemctl enable --now apache2 mariadb
+```
+
+**RHEL, Rocky or Fedora:**
+
+```
+sudo dnf install httpd mariadb-server php php-mysqlnd
+sudo systemctl enable --now httpd mariadb
+```
+
+`enable --now` both starts the service and sets it to start at boot, which
+replaces the "tick the service boxes" note in the Windows instructions.
+
+**Steps 2 and 3, adapted.** Copy the repository to
+`/var/www/html/exam-system`, then import the schema. On Debian and Ubuntu the
+MariaDB root account uses socket authentication, so this needs `sudo` and no
+password:
+
+```
+sudo mariadb < /var/www/html/exam-system/database/schema.sql
+sudo mariadb -e "SHOW TABLES FROM exam_system;"
+```
+
+Create the application user exactly as in step 3, via `sudo mariadb -e "..."`.
+
+**Step 6, mod_rewrite.** This is the one place distro packages differ
+meaningfully from XAMPP, and it will bite you. `mod_rewrite` is **not** enabled
+by default, and `AllowOverride` is **`None`**, so `.htaccess` is ignored:
+
+```
+sudo a2enmod rewrite
+sudo nano /etc/apache2/apache2.conf
+```
+
+Find the `<Directory /var/www/>` block and change `AllowOverride None` to
+`AllowOverride All`. Then:
+
+```
+sudo systemctl restart apache2
+curl -I http://localhost/exam-system/public/auth/login
+```
+
+On RHEL and Fedora `mod_rewrite` is compiled in and loaded by default, but the
+`AllowOverride` change is still required, in `/etc/httpd/conf/httpd.conf`.
+
+**Step 8, firewall.**
+
+```
+sudo ufw allow 80/tcp                                    # Debian, Ubuntu
+sudo firewall-cmd --permanent --add-service=http         # RHEL, Fedora
+sudo firewall-cmd --reload
+```
+
+Find the LAN address with `hostname -I` rather than `ipconfig`.
+
+**Step 5, timezone.** Set the machine's timezone first, then match it in
+`config.php`:
+
+```
+timedatectl
+sudo timedatectl set-timezone Africa/Lagos
+sudo systemctl restart mariadb
+```
+
+Then run the same two clock commands, with Linux paths:
+
+```
+php -r "require '/var/www/html/exam-system/config/config.php'; echo 'PHP:   ' . date('Y-m-d H:i:s') . PHP_EOL;"
+sudo mariadb -e "SELECT NOW() AS mysql_now, @@system_time_zone;"
+```
+
+**SELinux**, on RHEL and Fedora only. After copying files in, restore their
+labels or Apache will get permission denied on everything:
+
+```
+sudo restorecon -Rv /var/www/html/exam-system
+```
+
+### Route 2: XAMPP for Linux
+
+Same layout as the Windows machine, at `/opt/lampp`.
+
+```
+sudo chmod +x xampp-linux-x64-*.run
+sudo ./xampp-linux-x64-*.run
+sudo /opt/lampp/lampp start
+```
+
+`start`, `stop` and `restart` all work. Copy the app to
+`/opt/lampp/htdocs/exam-system`, then use the `/opt/lampp/bin` tools:
+
+```
+sudo /opt/lampp/bin/mysql -u root < /opt/lampp/htdocs/exam-system/database/schema.sql
+/opt/lampp/bin/php -r "echo password_hash('ChooseAStrongPassword', PASSWORD_DEFAULT), PHP_EOL;"
+```
+
+`mod_rewrite` and `AllowOverride All` are already correct in
+`/opt/lampp/etc/httpd.conf`, same as on Windows, so step 6 is a confirmation
+rather than a change.
+
+XAMPP for Linux does not install a service. To start it at boot:
+
+```
+sudo tee /etc/systemd/system/lampp.service > /dev/null <<'EOF'
+[Unit]
+Description=XAMPP
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/opt/lampp/lampp start
+ExecStop=/opt/lampp/lampp stop
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl enable --now lampp
+```
+
+### Permissions
+
+This app **writes nothing to disk**. There are no uploads, no log files, no
+generated cache. That means the application directory can be read-only to the
+web server, which is unusual and worth taking advantage of.
+
+Debian and Ubuntu, with `www-data` as the web server user:
+
+```
+cd /var/www/html
+sudo chown -R root:www-data exam-system
+sudo find exam-system -type d -exec chmod 750 {} \;
+sudo find exam-system -type f -exec chmod 640 {} \;
+```
+
+Directories become `rwxr-x---` and files `rw-r-----`: root can change them,
+Apache can read them, nobody else on the machine can read them at all. That last
+part matters, because `config/config.php` holds the database password.
+
+On RHEL and Fedora substitute `apache` for `www-data`. On XAMPP for Linux
+substitute `daemon`, and the path is `/opt/lampp/htdocs`.
+
+**Sessions are the one thing that does need writing**, and it happens outside the
+application directory. Confirm the path exists and is writable by the web server:
+
+```
+php -i | grep session.save_path
+```
+
+Debian and Ubuntu use `/var/lib/php/sessions`, already set up correctly by the
+package. XAMPP for Linux uses `/opt/lampp/temp`. If sign-in appears to succeed
+but immediately bounces back to the login page, this directory is the first
+thing to check.
+
+---
+
 ## Notes for whoever maintains this
 
 - **`config/config.php` is gitignored.** Updating the app never overwrites it,
