@@ -1,0 +1,21 @@
+# No file in this directory is meant to be fetched over HTTP.
+#
+# Everything here is reached by PHP through require/include on the filesystem,
+# so denying web access costs the application nothing. It matters because the
+# common XAMPP layout puts the whole repository inside the document root, which
+# would otherwise serve database/schema.sql as plain text and would serve
+# config/config.php as source the moment PHP stops executing.
+#
+# This is the second layer. The first is pointing DocumentRoot at public/,
+# which is what OFFLINE-DEPLOYMENT.md recommends. Keep both.
+
+<IfModule mod_authz_core.c>
+    # Apache 2.4
+    Require all denied
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    # Apache 2.2
+    Order deny,allow
+    Deny from all
+</IfModule>

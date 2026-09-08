@@ -49,7 +49,7 @@ database/ → schema.sql
 
 **Key design decisions**
 - **Snapshot-on-start** — the most important write in the system creates the attempt, computes the deadline server-side, draws random questions, and freezes their order in a single database transaction. All-or-nothing.
-- **`public/` as the only web-accessible directory** — all application code and config sit above the document root.
+- **`public/` is the intended document root.** Point the web server at it and application code, config and the schema sit outside the served tree entirely. Where the whole repository goes inside the web root instead, which is the usual XAMPP layout, `config/`, `app/` and `database/` each carry an `.htaccess` refusing HTTP access as a second layer. Both are covered in [OFFLINE-DEPLOYMENT.md](OFFLINE-DEPLOYMENT.md).
 - **Defence in depth** — every rule is enforced at both the application layer (friendly errors) and the schema layer (correctness guarantees): unique constraints, foreign keys, composite keys.
 
 ## Stack

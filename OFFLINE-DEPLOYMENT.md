@@ -465,9 +465,12 @@ credentials. But that safety depends entirely on PHP still working. If the PHP
 module is ever disabled or an upgrade half-fails, Apache falls back to serving
 `.php` files as plain text, and the database password goes with them.
 
-Pick one of these two fixes.
+There are two layers here. **Apply both.** The first keeps the sensitive
+directories out of the served tree entirely; the second is what protects you on
+the day someone deploys with the wrong document root, which is exactly when the
+first layer is absent.
 
-### Option A: point the document root at `public/` (preferred)
+### Layer 1: point the document root at `public/` (recommended setup)
 
 This is the layout the application was designed for, and it puts `config/`,
 `app/` and `database/` genuinely outside the web root rather than merely
@@ -497,35 +500,45 @@ define('BASE_URL', '/');
 
 Clients now use `http://192.168.1.50/` with no path. Restart Apache.
 
-### Option B: keep the layout, deny the sensitive directories
+### Layer 2: the directory denials (already in the repository)
 
-Less clean, but it does not touch Apache's configuration. Create three files:
+`config/`, `app/` and `database/` each carry an `.htaccess` that refuses HTTP
+access, so a fresh clone is safe before anyone configures anything:
 
-**Linux:**
+```apache
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
 
-```
-cd /var/www/html/exam-system
-printf 'Require all denied\n' | sudo tee config/.htaccess app/.htaccess database/.htaccess
-```
-
-**Windows**, in a Command Prompt:
-
-```
-cd C:\xampp\htdocs\exam-system
-echo Require all denied> config\.htaccess
-echo Require all denied> app\.htaccess
-echo Require all denied> database\.htaccess
+<IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+</IfModule>
 ```
 
-`public/.htaccess` is unaffected, so routing keeps working.
+Both syntaxes are present because Apache 2.4 and 2.2 disagree, and an
+unrecognised directive in `.htaccess` returns a 500 rather than being ignored.
 
-Confirm either fix worked:
+This costs the application nothing. Every file in those directories is reached
+by PHP through `require` on the filesystem, never over HTTP. `public/.htaccess`
+is a separate file and is unaffected, so routing keeps working.
+
+These only take effect where `AllowOverride All` is set, which is step 6. Under
+layer 1 they are redundant, and that is the point: they are what covers you when
+layer 1 is missing.
+
+### Confirm both
 
 ```
 curl -I http://localhost/exam-system/database/schema.sql
+curl -I http://localhost/exam-system/config/config.php
+curl -I http://localhost/exam-system/public/auth/login
 ```
 
-Option A gives `404`. Option B gives `403`. Anything else means it did not take.
+With layer 1 applied the first two give `404`, because those paths are no longer
+below the document root at all. With only layer 2 they give `403`. Either way
+the third must give `200`: if the app itself stopped working, `AllowOverride` is
+being applied more widely than intended.
 
 ---
 
