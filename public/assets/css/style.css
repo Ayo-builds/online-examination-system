@@ -681,6 +681,20 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
 .tag--flag { color: var(--danger); }
 .tag--muted { color: var(--slate); opacity: 0.75; }
 
+/* ---------- Student identity --------------------------------------------- */
+/* The admission number and class that sit under a student's name wherever a
+   teacher acts on one. Never the only thing on the line: it accompanies the
+   name, it does not replace it. */
+.ident {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+.ident__adm { font-family: var(--mono); }
+/* In a table the name sits on its own line with the identity beneath it. */
+.data-table .ident { display: flex; }
+
 /* ---------- Sign-in / error pages ---------------------------------------- */
 
 .auth-page {

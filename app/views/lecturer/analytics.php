@@ -103,7 +103,10 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
             <tbody>
                 <?php foreach ($scores as $s): ?>
                 <tr>
-                    <td><?= htmlspecialchars($s['full_name']) ?></td>
+                    <td>
+                        <?= htmlspecialchars($s['full_name']) ?>
+                        <?php $student = $s; require APP_ROOT . '/app/views/_partials/student_identity.php'; ?>
+                    </td>
                     <td class="num"><?= $s['total_score'] === null ? '&mdash;' : htmlspecialchars($s['total_score']) ?></td>
                     <td>
                         <?php if ($s['grading_status'] === 'partial'): ?>

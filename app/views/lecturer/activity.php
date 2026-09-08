@@ -13,7 +13,7 @@
 
 <?php
 $page_title = 'Activity review';
-$page_lead = htmlspecialchars($attempt['student_name']);
+ob_start(); ?><?= htmlspecialchars($attempt['student_name']) ?> <?php $student = $attempt; require APP_ROOT . '/app/views/_partials/student_identity.php'; ?><?php $page_lead = ob_get_clean();
 require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if ((int) $attempt['is_flagged'] === 1): ?>

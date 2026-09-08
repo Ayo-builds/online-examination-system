@@ -261,13 +261,15 @@ class Attempt extends Model
         return $this->query(
             "SELECT a.id, a.status, a.total_score, a.grading_status, a.is_flagged,
                     a.submitted_at,
-                    u.full_name AS student_name,
+                    u.full_name AS student_name, u.admission_no,
+                    cl.year_group, cl.arm,
                     e.title AS exam_title, e.pass_mark,
                     c.course_code
              FROM exam_attempts a
-             JOIN exams e   ON e.id = a.exam_id
-             JOIN courses c ON c.id = e.course_id
-             JOIN users u   ON u.id = a.student_id
+             JOIN exams e         ON e.id = a.exam_id
+             JOIN courses c       ON c.id = e.course_id
+             JOIN users u         ON u.id = a.student_id
+             LEFT JOIN classes cl ON cl.id = u.class_id
              WHERE c.lecturer_id = ?
                AND a.status IN ('submitted', 'auto_submitted')
              ORDER BY (a.grading_status = 'partial') DESC,
@@ -281,13 +283,15 @@ class Attempt extends Model
     public function findForLecturer(int $attemptId, int $lecturerId): ?array
     {
         $row = $this->query(
-            "SELECT a.*, u.full_name AS student_name,
+            "SELECT a.*, u.full_name AS student_name, u.admission_no,
+                    cl.year_group, cl.arm,
                     e.title AS exam_title, e.pass_mark,
                     c.course_code, c.id AS course_id
              FROM exam_attempts a
-             JOIN exams e   ON e.id = a.exam_id
-             JOIN courses c ON c.id = e.course_id
-             JOIN users u   ON u.id = a.student_id
+             JOIN exams e         ON e.id = a.exam_id
+             JOIN courses c       ON c.id = e.course_id
+             JOIN users u         ON u.id = a.student_id
+             LEFT JOIN classes cl ON cl.id = u.class_id
              WHERE a.id = ? AND c.lecturer_id = ?
              LIMIT 1",
             [$attemptId, $lecturerId]

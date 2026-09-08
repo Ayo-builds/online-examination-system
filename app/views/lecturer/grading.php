@@ -37,7 +37,10 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
             <tbody>
                 <?php foreach ($attempts as $a): ?>
                 <tr>
-                    <td><?= htmlspecialchars($a['student_name']) ?></td>
+                    <td>
+                        <?= htmlspecialchars($a['student_name']) ?>
+                        <?php $student = $a; require APP_ROOT . '/app/views/_partials/student_identity.php'; ?>
+                    </td>
                     <td>
                         <span class="code"><?= htmlspecialchars($a['course_code']) ?></span>
                         <span class="muted">/</span>

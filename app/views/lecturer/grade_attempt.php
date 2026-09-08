@@ -14,7 +14,7 @@
 <?php
 $page_title = htmlspecialchars($attempt['student_name']);
 $page_lead_class = 'small';
-ob_start(); ?><?= htmlspecialchars($attempt['course_code']) ?> / <?= htmlspecialchars($attempt['exam_title']) ?> &middot; submitted <?= htmlspecialchars($attempt['submitted_at']) ?><?php $page_lead = ob_get_clean();
+ob_start(); ?><?php $student = $attempt; require APP_ROOT . '/app/views/_partials/student_identity.php'; ?> &middot; <?= htmlspecialchars($attempt['course_code']) ?> / <?= htmlspecialchars($attempt['exam_title']) ?> &middot; submitted <?= htmlspecialchars($attempt['submitted_at']) ?><?php $page_lead = ob_get_clean();
 require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <div class="grid grid--2">

@@ -99,9 +99,12 @@ class Exam extends Model
     public function scores(int $examId): array
     {
         return $this->query(
-            "SELECT a.total_score, a.grading_status, u.full_name
+            "SELECT a.total_score, a.grading_status,
+                    u.full_name, u.admission_no,
+                    cl.year_group, cl.arm
              FROM exam_attempts a
-             JOIN users u ON u.id = a.student_id
+             JOIN users u         ON u.id = a.student_id
+             LEFT JOIN classes cl ON cl.id = u.class_id
              WHERE a.exam_id = ?
                AND a.status IN ('submitted', 'auto_submitted')
              ORDER BY a.total_score DESC",
