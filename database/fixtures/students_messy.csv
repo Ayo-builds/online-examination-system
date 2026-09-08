@@ -1,0 +1,13 @@
+name,class,admission_no
+"Valid Student",SS3A,
+,SS3A,
+"No Class Given",,
+"Bad Class",SS9Z,
+"Placeholder Attempt",UNASSIGNED,
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,SS3A,
+"Bad Adm Format",SS3A,"has space"
+"Clashes With Db",SS3A,ADM/2026/0004
+"Dupe One",SS3A,SCH/9/111
+"Dupe Two",SS3A,SCH/9/111
+,,
+"Another Valid","ss3 c",
