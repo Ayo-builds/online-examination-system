@@ -25,6 +25,7 @@ CREATE TABLE users (
     email VARCHAR(150) NULL UNIQUE,
     admission_no VARCHAR(30) NULL UNIQUE,
     class_id INT NULL,
+    import_batch_id CHAR(32) NULL,
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('admin','lecturer','student') NOT NULL,
     status ENUM('active','suspended') DEFAULT 'active',
@@ -35,6 +36,27 @@ CREATE TABLE users (
      OR (role <> 'student' AND admission_no IS NULL AND email IS NOT NULL)
     )
 );
+
+-- Each bulk student import, recorded so it can be undone. The row outlives the
+-- accounts it created: after a batch is deleted the record stays, showing what
+-- was imported, from which file and by whom.
+CREATE TABLE import_batches (
+    id CHAR(32) NOT NULL PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    row_count INT NOT NULL,
+    imported_by INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_import_batches_user FOREIGN KEY (imported_by)
+        REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- ON DELETE SET NULL, not CASCADE: deleting the batch record must never delete
+-- the people it created. That decision belongs to the delete-batch action,
+-- which refuses accounts that have already sat an exam.
+ALTER TABLE users
+    ADD INDEX idx_users_import_batch (import_batch_id),
+    ADD CONSTRAINT fk_users_import_batch FOREIGN KEY (import_batch_id)
+        REFERENCES import_batches(id) ON DELETE SET NULL;
 
 CREATE TABLE courses (
     id INT AUTO_INCREMENT PRIMARY KEY,

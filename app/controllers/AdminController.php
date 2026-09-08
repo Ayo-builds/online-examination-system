@@ -146,6 +146,7 @@ class AdminController extends Controller
     // that might differ.
     private const IMPORT_SESSION_KEY     = 'student_import';
     private const CREDENTIALS_SESSION_KEY = 'student_import_credentials';
+    private const BATCH_RESULT_SESSION_KEY = 'import_batch_result';
 
     // GET /admin/importStudents
     public function importStudents(): void
@@ -237,8 +238,19 @@ class AdminController extends Controller
         $import = new StudentImport();
 
         // Hashing happens here, outside the transaction. This is the slow part.
-        $rows   = $import->prepare($pending['rows']);
-        $result = $import->commit($rows);
+        $rows = $import->prepare($pending['rows']);
+
+        // The batch is recorded before the accounts, so every created row can
+        // carry its id. If the insert then fails, an empty batch is left
+        // behind: harmless, and it reads as the honest record of an import
+        // that was attempted and wrote nothing.
+        $batchId = (new ImportBatch())->create(
+            $pending['filename'],
+            count($rows),
+            (int) Auth::user()['id']
+        );
+
+        $result = $import->commit($rows, $batchId);
 
         if ($result['error'] !== null) {
             $this->importError($result['error']);
@@ -296,6 +308,59 @@ class AdminController extends Controller
             default:
                 return 'The upload failed. Please try again.';
         }
+    }
+
+    // GET /admin/importBatches. What each import created, and what is left.
+    public function importBatches(): void
+    {
+        // A one-shot result from the last delete, if there was one.
+        $result = $_SESSION[self::BATCH_RESULT_SESSION_KEY] ?? null;
+        unset($_SESSION[self::BATCH_RESULT_SESSION_KEY]);
+
+        $this->view('admin/import_batches', [
+            'batches' => (new ImportBatch())->allWithCounts(),
+            'result'  => $result,
+        ]);
+    }
+
+    // POST /admin/deleteImportBatch/{batchId}
+    //
+    // Undoes an import. Accounts that have already sat an exam are refused and
+    // reported by name: deleting one would take a submitted script with it, and
+    // an admin correcting a typo in a class list has not asked for that.
+    public function deleteImportBatch(string $batchId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/importBatches');
+        }
+
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('admin/importBatches');
+        }
+
+        $batchModel = new ImportBatch();
+        $batch      = $batchModel->findBatch($batchId);
+
+        if ($batch === null) {
+            $this->redirect('admin/importBatches');
+        }
+
+        // A batch of 250 accounts is 250 DELETEs plus their cascades. Same
+        // reasoning as the import itself: the budget is refreshed rather than
+        // assumed, so the host's max_execution_time cannot cut this in half and
+        // leave the batch partly removed.
+        set_time_limit(120);
+
+        $outcome = $batchModel->deleteMembers($batchId);
+
+        $_SESSION[self::BATCH_RESULT_SESSION_KEY] = [
+            'filename' => $batch['filename'],
+            'deleted'  => $outcome['deleted'],
+            'skipped'  => $outcome['skipped'],
+            'error'    => $outcome['error'],
+        ];
+
+        $this->redirect('admin/importBatches');
     }
 
     // POST /admin/toggleStatus/{id}

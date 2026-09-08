@@ -87,8 +87,9 @@ route without it.** Every page except the front one will 404.
 
 ## 3. Create the database
 
-The schema file creates the database, all 12 tables, and the constraints. It
-contains no data.
+The schema file creates the database, all 14 tables, and the constraints. The
+only data it carries is the class list (JSS1-SS3, arms A to C), which the rest
+of the schema references by foreign key. It creates no accounts.
 
 ```
 C:\xampp\mysql\bin\mysql.exe -u root < C:\xampp\htdocs\exam-system\database\schema.sql
@@ -102,7 +103,7 @@ Confirm it worked:
 C:\xampp\mysql\bin\mysql.exe -u root -e "USE exam_system; SHOW TABLES;"
 ```
 
-Expect 12 tables, including `users`, `exams`, `exam_attempts` and
+Expect 14 tables, including `users`, `exams`, `exam_attempts` and
 `attempt_answers`.
 
 ### Give the app its own database user

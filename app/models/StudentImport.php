@@ -233,9 +233,12 @@ class StudentImport extends Model
      * because another admin may have taken a number in between. The UNIQUE
      * index is the real guard; this only turns it into a readable message.
      *
+     * Every row is stamped with $batchId, which is what makes the import
+     * undoable afterwards. See ImportBatch.
+     *
      * @return array{created:int, error:?string}
      */
-    public function commit(array $rows): array
+    public function commit(array $rows, string $batchId): array
     {
         $taken = $this->existingAdmissionNumbers();
         foreach ($rows as $r) {
@@ -255,8 +258,9 @@ class StudentImport extends Model
 
         try {
             $stmt = $this->db->prepare(
-                "INSERT INTO users (full_name, email, password_hash, role, admission_no, class_id)
-                 VALUES (?, NULL, ?, 'student', ?, ?)"
+                "INSERT INTO users
+                    (full_name, email, password_hash, role, admission_no, class_id, import_batch_id)
+                 VALUES (?, NULL, ?, 'student', ?, ?, ?)"
             );
 
             foreach ($rows as $r) {
@@ -265,6 +269,7 @@ class StudentImport extends Model
                     $r['password_hash'],
                     $r['admission_no'],
                     $r['class_id'],
+                    $batchId,
                 ]);
             }
 
