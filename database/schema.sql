@@ -31,7 +31,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_users_class FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE SET NULL,
     CONSTRAINT chk_users_login_identifier CHECK (
-        (role =  'student' AND admission_no IS NOT NULL)
+        (role =  'student' AND admission_no IS NOT NULL AND email IS NULL)
      OR (role <> 'student' AND admission_no IS NULL AND email IS NOT NULL)
     )
 );

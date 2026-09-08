@@ -90,14 +90,12 @@ class AdminController extends Controller
                 $errors[] = 'Please choose a class.';
             }
 
-            // Email is optional for a student. Validate it only if given.
-            if ($email !== '') {
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $errors[] = 'That email address is not valid. Leave it blank if the student has none.';
-                } elseif ($userModel->findByEmail($email) !== null) {
-                    $errors[] = 'That email is already registered.';
-                }
-            }
+            // Students never carry an email: users.email means "staff login
+            // address" and nothing else. The form does not render the field for
+            // this role, so anything arriving here came from a stale page or a
+            // tampered POST. Discard it rather than erroring, because there is
+            // no legitimate way for an admin to have typed it.
+            $email = '';
         } else {
             // Staff still sign in with an email, so it stays required.
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -124,7 +122,7 @@ class AdminController extends Controller
 
         $userModel->create(
             $fullName,
-            $email !== '' ? $email : null,
+            $isStudent ? null : $email,
             $password,
             $role,
             $isStudent ? $admissionNo : null,

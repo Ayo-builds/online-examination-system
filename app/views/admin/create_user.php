@@ -76,17 +76,12 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
             </select>
         </div>
 
-        <div class="field">
-            <label for="email">
-                Email
-                <span class="muted small" data-role-field="student" <?= $isStudent ? '' : 'hidden' ?>>(optional)</span>
-            </label>
+        <div class="field" data-role-field="staff" <?= $isStudent ? 'hidden' : '' ?>>
+            <label for="email">Email</label>
             <input type="email" id="email" name="email"
                    <?= $isStudent ? '' : 'required' ?>
                    value="<?= htmlspecialchars($old['email'] ?? '') ?>">
-            <p class="help" data-role-field="student" <?= $isStudent ? '' : 'hidden' ?>>
-                Leave blank if the student has no email address. Staff accounts require one.
-            </p>
+            <p class="help">Staff sign in with this address. Students never hold one.</p>
         </div>
 
         <div class="field">
@@ -110,6 +105,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 (function () {
     var role         = document.getElementById('role');
     var studentBits  = document.querySelectorAll('[data-role-field="student"]');
+    var staffBits    = document.querySelectorAll('[data-role-field="staff"]');
     var admissionNo  = document.getElementById('admission_no');
     var classId      = document.getElementById('class_id');
     var email        = document.getElementById('email');
@@ -118,10 +114,15 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
         var isStudent = role.value === 'student';
 
         studentBits.forEach(function (el) { el.hidden = !isStudent; });
+        staffBits.forEach(function (el) { el.hidden = isStudent; });
 
         admissionNo.required = isStudent;
         classId.required    = isStudent;
         email.required      = !isStudent;
+        // A hidden field still submits its value, and the server discards a
+        // student's email anyway; clearing it keeps the POST honest and stops a
+        // half-typed address reappearing if the admin switches role back.
+        if (isStudent) { email.value = ''; }
     }
 
     role.addEventListener('change', sync);
