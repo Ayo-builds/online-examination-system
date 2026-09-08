@@ -23,6 +23,8 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
             <thead>
                 <tr>
                     <th>Name</th>
+                    <th>Admission no.</th>
+                    <th>Class</th>
                     <th>Email</th>
                     <th>Role</th>
                     <th>Status</th>
@@ -32,9 +34,43 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
             </thead>
             <tbody>
                 <?php foreach ($users as $u): ?>
+                <?php $classLabel = SchoolClass::labelFor($u); ?>
                 <tr>
                     <td><?= htmlspecialchars($u['full_name']) ?></td>
-                    <td class="small"><?= htmlspecialchars($u['email']) ?></td>
+
+                    <!-- Staff have no admission number and students may have no
+                         email, so both columns carry an explicit em dash rather
+                         than an empty cell. htmlspecialchars(null) is deprecated
+                         from PHP 8.1, which is the other reason for the branch. -->
+                    <td class="small nowrap">
+                        <?php if ($u['admission_no'] !== null): ?>
+                            <?= htmlspecialchars($u['admission_no']) ?>
+                        <?php else: ?>
+                            <span class="muted">&mdash;</span>
+                        <?php endif; ?>
+                    </td>
+
+                    <td class="small nowrap">
+                        <?php if ($classLabel === ''): ?>
+                            <span class="muted">&mdash;</span>
+                        <?php elseif ($classLabel === 'Unassigned'): ?>
+                            <!-- Flagged, not styled as a normal class: these are
+                                 the migration's backfilled rows waiting for an
+                                 admin to file them under a real class. -->
+                            <span class="tag tag--flag">Unassigned</span>
+                        <?php else: ?>
+                            <span class="tag"><?= htmlspecialchars($classLabel) ?></span>
+                        <?php endif; ?>
+                    </td>
+
+                    <td class="small">
+                        <?php if ($u['email'] !== null): ?>
+                            <?= htmlspecialchars($u['email']) ?>
+                        <?php else: ?>
+                            <span class="muted">&mdash;</span>
+                        <?php endif; ?>
+                    </td>
+
                     <td><span class="tag"><?= htmlspecialchars($u['role']) ?></span></td>
                     <td>
                         <?php if ($u['status'] === 'active'): ?>

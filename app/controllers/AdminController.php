@@ -20,10 +20,14 @@ class AdminController extends Controller
     // GET /admin/createUser. Show the form
     public function createUser(): void
     {
-        $this->view('admin/create_user');
+        $this->view('admin/create_user', ['classes' => (new SchoolClass())->selectable()]);
     }
 
     // POST /admin/storeUser. Process it
+    //
+    // The two roles carry different identities: a student is identified by an
+    // admission number and sits in a class, staff by an email address. The
+    // validation below branches on role rather than demanding both of everyone.
     public function storeUser(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -31,24 +35,34 @@ class AdminController extends Controller
         }
 
         if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
-            $this->view('admin/create_user', ['error' => 'Session expired. Please try again.']);
+            $this->view('admin/create_user', [
+                'error'   => 'Session expired. Please try again.',
+                'classes' => (new SchoolClass())->selectable(),
+            ]);
             return;
         }
 
         // ---- Gather + trim ----
-        $fullName = trim($_POST['full_name'] ?? '');
-        $email    = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
-        $role     = $_POST['role'] ?? '';
+        $fullName    = trim($_POST['full_name'] ?? '');
+        $email       = trim($_POST['email'] ?? '');
+        $password    = $_POST['password'] ?? '';
+        $role        = $_POST['role'] ?? '';
+        // Upper-cased on the way in so it is stored exactly as Auth will
+        // normalise it at sign-in. Storing 'adm/2026/0004' and looking up
+        // 'ADM/2026/0004' happens to work under the table's case-insensitive
+        // collation, but the value an admin reads off the screen should be the
+        // value the student types.
+        $admissionNo = mb_strtoupper(trim($_POST['admission_no'] ?? ''));
+        $classId     = (int) ($_POST['class_id'] ?? 0);
+
+        $isStudent = $role === 'student';
 
         // ---- Validate, collecting ALL problems ----
-        $errors = [];
+        $errors    = [];
+        $userModel = new User();
 
         if ($fullName === '' || mb_strlen($fullName) > 100) {
             $errors[] = 'Full name is required (max 100 characters).';
-        }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'A valid email address is required.';
         }
         if (mb_strlen($password) < 8) {
             $errors[] = 'Password must be at least 8 characters.';
@@ -57,21 +71,65 @@ class AdminController extends Controller
             $errors[] = 'Role must be admin, lecturer, or student.';
         }
 
-        $userModel = new User();
+        if ($isStudent) {
+            // Admission number: required, and the student's only way in.
+            if ($admissionNo === '') {
+                $errors[] = 'Admission number is required for a student.';
+            } elseif (!preg_match('/^[A-Z0-9][A-Z0-9\/\-]{2,29}$/', $admissionNo)) {
+                $errors[] = 'Admission number must be 3-30 characters: letters, digits, / or - '
+                          . '(e.g. ADM/2026/0004).';
+            } elseif ($userModel->findByAdmissionNo($admissionNo) !== null) {
+                $errors[] = 'That admission number is already in use.';
+            }
 
-        if (empty($errors) && $userModel->findByEmail($email) !== null) {
-            $errors[] = 'That email is already registered.';
+            // Class: nullable in the schema so the migration's backfilled rows
+            // stay valid, but required here. Nothing should be created without
+            // one going forward.
+            $class = $classId > 0 ? (new SchoolClass())->find($classId) : null;
+            if ($class === null || $class['year_group'] === SchoolClass::PLACEHOLDER) {
+                $errors[] = 'Please choose a class.';
+            }
+
+            // Email is optional for a student. Validate it only if given.
+            if ($email !== '') {
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $errors[] = 'That email address is not valid. Leave it blank if the student has none.';
+                } elseif ($userModel->findByEmail($email) !== null) {
+                    $errors[] = 'That email is already registered.';
+                }
+            }
+        } else {
+            // Staff still sign in with an email, so it stays required.
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = 'A valid email address is required.';
+            } elseif ($userModel->findByEmail($email) !== null) {
+                $errors[] = 'That email is already registered.';
+            }
         }
 
         if (!empty($errors)) {
             $this->view('admin/create_user', [
-                'errors' => $errors,
-                'old'    => ['full_name' => $fullName, 'email' => $email, 'role' => $role],
+                'errors'  => $errors,
+                'classes' => (new SchoolClass())->selectable(),
+                'old'     => [
+                    'full_name'    => $fullName,
+                    'email'        => $email,
+                    'role'         => $role,
+                    'admission_no' => $admissionNo,
+                    'class_id'     => $classId,
+                ],
             ]);
             return;
         }
 
-        $userModel->create($fullName, $email, $password, $role);
+        $userModel->create(
+            $fullName,
+            $email !== '' ? $email : null,
+            $password,
+            $role,
+            $isStudent ? $admissionNo : null,
+            $isStudent ? $classId : null
+        );
 
         $this->redirect('admin/users');
     }

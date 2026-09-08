@@ -3,6 +3,34 @@ class User extends Model
 {
     protected string $table = 'users';
 
+    // Staff sign in with an email, so an email only ever resolves to staff.
+    // Scoping the lookup by role here is what stops a student who happens to
+    // have an email on file from having a second way in.
+    public function findStaffByEmail(string $email): ?array
+    {
+        $row = $this->query(
+            "SELECT * FROM users WHERE email = ? AND role IN ('admin','lecturer') LIMIT 1",
+            [$email]
+        )->fetch();
+
+        return $row ?: null;
+    }
+
+    // The mirror of the above: an admission number only ever resolves to a
+    // student.
+    public function findStudentByAdmissionNo(string $admissionNo): ?array
+    {
+        $row = $this->query(
+            "SELECT * FROM users WHERE admission_no = ? AND role = 'student' LIMIT 1",
+            [$admissionNo]
+        )->fetch();
+
+        return $row ?: null;
+    }
+
+    // Uniqueness checks for the create-user form. These are deliberately NOT
+    // role-scoped: the columns are unique across the whole table, so the
+    // form has to refuse a collision with any row, staff or student.
     public function findByEmail(string $email): ?array
     {
         $row = $this->query(
@@ -13,26 +41,55 @@ class User extends Model
         return $row ?: null;
     }
 
-    // All users, newest first, for the admin list
+    public function findByAdmissionNo(string $admissionNo): ?array
+    {
+        $row = $this->query(
+            "SELECT * FROM users WHERE admission_no = ? LIMIT 1",
+            [$admissionNo]
+        )->fetch();
+
+        return $row ?: null;
+    }
+
+    // All users, newest first, for the admin list. LEFT JOIN because staff have
+    // no class and a student may sit outside one.
     public function allByNewest(): array
     {
         return $this->query(
-            "SELECT id, full_name, email, role, status, created_at
-             FROM users
-             ORDER BY created_at DESC"
+            "SELECT u.id, u.full_name, u.email, u.admission_no, u.role, u.status, u.created_at,
+                    c.year_group, c.arm
+               FROM users u
+          LEFT JOIN classes c ON c.id = u.class_id
+           ORDER BY u.created_at DESC"
         )->fetchAll();
     }
 
-    public function create(string $fullName, string $email, string $password, string $role): int
-    {
+    // $email is null for a student who was not given one; $admissionNo and
+    // $classId are null for staff. The schema's CHECK constraint holds the
+    // same line if a caller ever gets this wrong.
+    public function create(
+        string $fullName,
+        ?string $email,
+        string $password,
+        string $role,
+        ?string $admissionNo = null,
+        ?int $classId = null
+    ): int {
         $this->query(
-            "INSERT INTO users (full_name, email, password_hash, role) VALUES (?, ?, ?, ?)",
-            [$fullName, $email, password_hash($password, PASSWORD_DEFAULT), $role]
+            "INSERT INTO users (full_name, email, password_hash, role, admission_no, class_id)
+             VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                $fullName,
+                $email !== '' ? $email : null,
+                password_hash($password, PASSWORD_DEFAULT),
+                $role,
+                $admissionNo,
+                $classId,
+            ]
         );
 
         return (int) $this->db->lastInsertId();
     }
-   
 
     public function setStatus(int $id, string $status): void
     {
@@ -52,4 +109,3 @@ class User extends Model
         )->fetchAll();
     }
 }
-    

@@ -7,7 +7,7 @@ class Enrollment extends Model
     public function studentsInCourse(int $courseId): array
     {
         return $this->query(
-            "SELECT u.id, u.full_name, u.email, u.status
+            "SELECT u.id, u.full_name, u.admission_no, u.status
              FROM enrollments e
              JOIN users u ON u.id = e.student_id
              WHERE e.course_id = ?

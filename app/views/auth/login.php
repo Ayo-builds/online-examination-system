@@ -30,8 +30,16 @@
             <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
 
             <div class="field">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required autofocus autocomplete="username">
+                <label for="identifier">Admission number or email</label>
+                <!-- Deliberately type="text", not type="email": the browser
+                     would reject an admission number before the form was ever
+                     submitted. autocapitalize is off so a phone keyboard does
+                     not mangle the identifier the server normalises itself. -->
+                <input type="text" id="identifier" name="identifier" required autofocus
+                       autocomplete="username" autocapitalize="off" spellcheck="false"
+                       maxlength="150" placeholder="ADM/2026/0004"
+                       value="<?= htmlspecialchars($old["identifier"] ?? "") ?>">
+                <p class="help">Students sign in with their admission number. Staff use their email address.</p>
             </div>
 
             <div class="field">

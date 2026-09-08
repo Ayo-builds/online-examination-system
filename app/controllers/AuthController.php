@@ -1,6 +1,12 @@
 <?php
 class AuthController extends Controller
 {
+    // login_attempts.identifier is VARCHAR(150) and the table's primary key, so
+    // anything longer cannot be throttled. Rejecting it up front keeps the
+    // lockout honest instead of letting a long string error out or truncate
+    // into a shared bucket.
+    private const MAX_IDENTIFIER_LENGTH = 150;
+
     // GET /auth/login. Show the form
     public function login(): void
     {
@@ -11,6 +17,10 @@ class AuthController extends Controller
     }
 
     // POST /auth/authenticate. Process the form
+    //
+    // One form serves both audiences: students type an admission number, staff
+    // type an email, and Auth decides which by shape. Every failure below says
+    // the same thing, so the page never reveals which identifiers exist.
     public function authenticate(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -22,32 +32,45 @@ class AuthController extends Controller
             return;
         }
 
-        $email    = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
+        $identifier = trim($_POST['identifier'] ?? '');
+        $password   = $_POST['password'] ?? '';
 
-        if ($email === '' || $password === '') {
-            $this->view('auth/login', ['error' => 'Please fill in both fields.']);
-            return;
-        }
-
-          // Locked out?
-        $lockRemaining = Auth::lockoutRemaining($email);
-        if ($lockRemaining > 0) {
-            $mins = ceil($lockRemaining / 60);
+        if ($identifier === '' || $password === '') {
             $this->view('auth/login', [
-                'error' => "Too many failed attempts. Try again in {$mins} minute(s).",
+                'error' => 'Please fill in both fields.',
+                'old'   => ['identifier' => $identifier],
             ]);
             return;
         }
 
-        if (!Auth::attempt($email, $password)) {
-            Auth::recordFailure($email);
+        if (mb_strlen($identifier) > self::MAX_IDENTIFIER_LENGTH) {
             $this->view('auth/login', ['error' => 'Invalid credentials.']);
             return;
         }
-        Auth::clearFailures($email);
-        $this->redirect($this->homeFor(Auth::role()));
 
+        // Locked out? Auth normalises the identifier the same way for the
+        // lockout key and the user lookup, so a student cannot dodge a lock by
+        // changing the case of their admission number.
+        $lockRemaining = Auth::lockoutRemaining($identifier);
+        if ($lockRemaining > 0) {
+            $mins = ceil($lockRemaining / 60);
+            $this->view('auth/login', [
+                'error' => "Too many failed attempts. Try again in {$mins} minute(s).",
+                'old'   => ['identifier' => $identifier],
+            ]);
+            return;
+        }
+
+        if (!Auth::attempt($identifier, $password)) {
+            Auth::recordFailure($identifier);
+            $this->view('auth/login', [
+                'error' => 'Invalid credentials.',
+                'old'   => ['identifier' => $identifier],
+            ]);
+            return;
+        }
+
+        Auth::clearFailures($identifier);
         $this->redirect($this->homeFor(Auth::role()));
     }
 

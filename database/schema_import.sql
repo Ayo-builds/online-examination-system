@@ -1,14 +1,38 @@
 
 
 -- ============ PEOPLE & ACCESS ============
+CREATE TABLE classes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    year_group ENUM('JSS1','JSS2','JSS3','SS1','SS2','SS3','UNASSIGNED') NOT NULL,
+    arm VARCHAR(5) NOT NULL DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_year_group_arm (year_group, arm)
+);
+
+INSERT INTO classes (year_group, arm) VALUES
+    ('JSS1','A'), ('JSS1','B'), ('JSS1','C'),
+    ('JSS2','A'), ('JSS2','B'), ('JSS2','C'),
+    ('JSS3','A'), ('JSS3','B'), ('JSS3','C'),
+    ('SS1','A'),  ('SS1','B'),  ('SS1','C'),
+    ('SS2','A'),  ('SS2','B'),  ('SS2','C'),
+    ('SS3','A'),  ('SS3','B'),  ('SS3','C'),
+    ('UNASSIGNED','');
+
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
+    email VARCHAR(150) NULL UNIQUE,
+    admission_no VARCHAR(30) NULL UNIQUE,
+    class_id INT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('admin','lecturer','student') NOT NULL,
     status ENUM('active','suspended') DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_users_class FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE SET NULL,
+    CONSTRAINT chk_users_login_identifier CHECK (
+        (role =  'student' AND admission_no IS NOT NULL)
+     OR (role <> 'student' AND admission_no IS NULL AND email IS NOT NULL)
+    )
 );
 
 CREATE TABLE courses (
@@ -128,9 +152,9 @@ CREATE TABLE activity_logs (
 
 
 CREATE TABLE login_attempts (
-    email VARCHAR(150) NOT NULL,
+    identifier VARCHAR(150) NOT NULL,
     attempts INT NOT NULL DEFAULT 0,
     locked_until DATETIME NULL,
     last_attempt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (email)
+    PRIMARY KEY (identifier)
 );

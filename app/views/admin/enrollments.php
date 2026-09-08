@@ -42,7 +42,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>Email</th>
+                    <th>Admission no.</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -51,7 +51,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                 <?php foreach ($enrolled as $s): ?>
                 <tr>
                     <td><?= htmlspecialchars($s['full_name']) ?></td>
-                    <td class="small"><?= htmlspecialchars($s['email']) ?></td>
+                    <td class="small nowrap"><?= htmlspecialchars($s['admission_no'] ?? '') ?></td>
                     <td>
                         <?php if ($s['status'] === 'active'): ?>
                             <span class="tag tag--ok">Active</span>

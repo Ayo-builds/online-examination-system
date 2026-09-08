@@ -27,6 +27,13 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
         </div>
     <?php endif; ?>
 
+    <?php
+    $oldRole     = $old['role'] ?? 'student';
+    $oldClassId  = (int) ($old['class_id'] ?? 0);
+    $isStudent   = $oldRole === 'student';
+    $classes     = $classes ?? [];
+    ?>
+
     <form method="POST" action="<?= BASE_URL ?>admin/storeUser">
         <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
 
@@ -37,9 +44,49 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
         </div>
 
         <div class="field">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" required
+            <label for="role">Role</label>
+            <select id="role" name="role" required>
+                <option value="student"  <?= $oldRole === 'student'  ? 'selected' : '' ?>>Student</option>
+                <option value="lecturer" <?= $oldRole === 'lecturer' ? 'selected' : '' ?>>Lecturer</option>
+                <option value="admin"    <?= $oldRole === 'admin'    ? 'selected' : '' ?>>Admin</option>
+            </select>
+        </div>
+
+        <!-- Student identity. Shown only for the student role; the server
+             validates the same rule, so a tampered form gains nothing. -->
+        <div class="field" data-role-field="student" <?= $isStudent ? '' : 'hidden' ?>>
+            <label for="admission_no">Admission number</label>
+            <input type="text" id="admission_no" name="admission_no"
+                   autocapitalize="characters" spellcheck="false" maxlength="30"
+                   placeholder="ADM/2026/0004"
+                   <?= $isStudent ? 'required' : '' ?>
+                   value="<?= htmlspecialchars($old['admission_no'] ?? '') ?>">
+            <p class="help">This is what the student signs in with, so it must be unique. Letters, digits, / and - only.</p>
+        </div>
+
+        <div class="field" data-role-field="student" <?= $isStudent ? '' : 'hidden' ?>>
+            <label for="class_id">Class</label>
+            <select id="class_id" name="class_id" <?= $isStudent ? 'required' : '' ?>>
+                <option value="">Select a class</option>
+                <?php foreach ($classes as $c): ?>
+                    <option value="<?= (int) $c['id'] ?>" <?= $oldClassId === (int) $c['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars(SchoolClass::labelFor($c)) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="email">
+                Email
+                <span class="muted small" data-role-field="student" <?= $isStudent ? '' : 'hidden' ?>>(optional)</span>
+            </label>
+            <input type="email" id="email" name="email"
+                   <?= $isStudent ? '' : 'required' ?>
                    value="<?= htmlspecialchars($old['email'] ?? '') ?>">
+            <p class="help" data-role-field="student" <?= $isStudent ? '' : 'hidden' ?>>
+                Leave blank if the student has no email address. Staff accounts require one.
+            </p>
         </div>
 
         <div class="field">
@@ -49,21 +96,38 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
             <p class="help">At least 8 characters. The account holder should change it after first sign-in.</p>
         </div>
 
-        <div class="field">
-            <label for="role">Role</label>
-            <select id="role" name="role" required>
-                <?php $oldRole = $old['role'] ?? ''; ?>
-                <option value="student"  <?= $oldRole === 'student'  ? 'selected' : '' ?>>Student</option>
-                <option value="lecturer" <?= $oldRole === 'lecturer' ? 'selected' : '' ?>>Lecturer</option>
-                <option value="admin"    <?= $oldRole === 'admin'    ? 'selected' : '' ?>>Admin</option>
-            </select>
-        </div>
-
         <div class="form-actions">
             <button type="submit" class="btn btn--primary">Create user</button>
             <a class="btn btn--quiet" href="<?= BASE_URL ?>admin/users">Cancel</a>
         </div>
     </form>
+
+<script>
+// Show the student-only fields, and move `required` between admission number
+// and email, as the role changes. A hidden input that is still `required`
+// blocks submission with a validation message the admin cannot see, so the
+// attribute has to move with the visibility.
+(function () {
+    var role         = document.getElementById('role');
+    var studentBits  = document.querySelectorAll('[data-role-field="student"]');
+    var admissionNo  = document.getElementById('admission_no');
+    var classId      = document.getElementById('class_id');
+    var email        = document.getElementById('email');
+
+    function sync() {
+        var isStudent = role.value === 'student';
+
+        studentBits.forEach(function (el) { el.hidden = !isStudent; });
+
+        admissionNo.required = isStudent;
+        classId.required    = isStudent;
+        email.required      = !isStudent;
+    }
+
+    role.addEventListener('change', sync);
+    sync();
+})();
+</script>
 
 </main>
 </body>
