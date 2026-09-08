@@ -2,3 +2,8 @@ config/config.php
 logs/
 seed*.php
 node_modules/
+
+# Database dumps. These carry live data and password hashes, so they must never
+# be committed. Anchored to the repository root so database/schema.sql, which is
+# structure only and IS tracked, stays unaffected.
+/*-backup-*.sql
