@@ -1530,3 +1530,125 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   font-size: 1.75rem; font-weight: 700; line-height: 1;
   color: var(--q-ink); letter-spacing: -0.01em;
 }
+
+/* ---------- Credential slips --------------------------------------------- */
+/* The printable page produced by a student import: one slip per student, laid
+   out to be cut apart and handed out. Two columns so a slip is wide enough for
+   a 14-character password on one line, which is what stops it being
+   transcribed wrongly. */
+
+.ident-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.slips {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+  margin-top: 1.25rem;
+  border-top: 1px dashed var(--line);
+  border-left: 1px dashed var(--line);
+}
+
+.slip {
+  padding: 0.9rem 1rem 0.8rem;
+  border-right: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
+  /* Never split a student's credentials across two sheets of paper. */
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.slip__school {
+  font-size: 0.6rem;
+  font-weight: var(--w-micro);
+  letter-spacing: var(--ls-micro);
+  text-transform: uppercase;
+  color: var(--slate);
+}
+
+.slip__name {
+  margin-top: 0.35rem;
+  font-size: 1.02rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.slip__class {
+  font-size: 0.72rem;
+  color: var(--slate);
+  margin-top: 0.1rem;
+}
+
+.slip__creds {
+  margin: 0.6rem 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.6rem;
+  align-items: baseline;
+}
+
+.slip__creds dt {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ls-micro);
+  color: var(--slate);
+}
+
+.slip__creds dd {
+  margin: 0;
+}
+
+.slip__mono {
+  font-family: var(--mono);
+  font-size: 0.86rem;
+}
+
+/* The one value on the page that must be read character by character. */
+.slip__password {
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.slip__foot {
+  margin-top: 0.6rem;
+  font-size: 0.63rem;
+  color: var(--slate);
+}
+
+@media print {
+  /* Everything that is not a slip is screen furniture. */
+  .topbar,
+  .slips-head,
+  .page__head,
+  .alert {
+    display: none !important;
+  }
+
+  body { background: #fff; }
+
+  .shell,
+  .shell--narrow {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .slips {
+    margin-top: 0;
+    border-color: #999;
+  }
+
+  .slip {
+    border-color: #999;
+  }
+
+  /* Cut lines have to survive the browser's "background graphics off"
+     default, so they are borders rather than backgrounds. */
+  @page {
+    margin: 12mm;
+  }
+}

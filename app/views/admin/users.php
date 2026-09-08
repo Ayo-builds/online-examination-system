@@ -14,6 +14,7 @@
 <?php
 $page_title = 'Users';
 ob_start(); ?>
+            <a class="btn btn--quiet btn--sm" href="<?= BASE_URL ?>admin/importStudents">Import students</a>
             <a class="btn btn--primary btn--sm" href="<?= BASE_URL ?>admin/createUser">Create user</a>
 <?php $page_actions = ob_get_clean();
 require APP_ROOT . '/app/views/_partials/page_head.php'; ?>

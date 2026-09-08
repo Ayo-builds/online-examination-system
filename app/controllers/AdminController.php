@@ -132,6 +132,172 @@ class AdminController extends Controller
         $this->redirect('admin/users');
     }
 
+    // ---- Bulk student import ------------------------------------------------
+    //
+    // Three steps, because creating a year group's worth of accounts is not
+    // something to do on a single click:
+    //
+    //   importStudents  the upload form
+    //   previewImport   parse and validate, show what WOULD be created
+    //   confirmImport   write it, then hand off to the credential slips
+    //
+    // The parsed rows live in the session between preview and confirm, so the
+    // admin confirms exactly the file they reviewed rather than a re-upload
+    // that might differ.
+    private const IMPORT_SESSION_KEY     = 'student_import';
+    private const CREDENTIALS_SESSION_KEY = 'student_import_credentials';
+
+    // GET /admin/importStudents
+    public function importStudents(): void
+    {
+        $this->view('admin/import_students', [
+            'classes' => (new SchoolClass())->selectable(),
+        ]);
+    }
+
+    // POST /admin/previewImport. Reads the file, writes nothing.
+    public function previewImport(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/importStudents');
+        }
+
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->importError('Session expired. Please try again.');
+            return;
+        }
+
+        $file = $_FILES['csv'] ?? null;
+
+        if ($file === null || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $this->importError($this->uploadErrorMessage($file['error'] ?? UPLOAD_ERR_NO_FILE));
+            return;
+        }
+
+        // is_uploaded_file, not just a path check: it is the one test that a
+        // path actually came from this request's upload rather than being
+        // pointed at something else on disk.
+        if (!is_uploaded_file($file['tmp_name'])) {
+            $this->importError('That upload could not be verified. Please try again.');
+            return;
+        }
+
+        if ($file['size'] > StudentImport::MAX_BYTES) {
+            $this->importError('That file is larger than 1 MB. A student list should be far smaller.');
+            return;
+        }
+
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($extension, ['csv', 'txt'], true)) {
+            $this->importError('Please upload a .csv file. Export it from Excel as "CSV (Comma delimited)".');
+            return;
+        }
+
+        $import = new StudentImport();
+        $result = $import->parse($file['tmp_name']);
+
+        $rows = $import->assignAdmissionNumbers($result['rows']);
+
+        // Only the fields the confirm step needs. Passwords are NOT generated
+        // yet: nothing secret is put in the session until the admin commits.
+        $_SESSION[self::IMPORT_SESSION_KEY] = [
+            'rows'     => $rows,
+            'filename' => $file['name'],
+        ];
+
+        $this->view('admin/import_preview', [
+            'rows'     => $rows,
+            'errors'   => $result['errors'],
+            'filename' => $file['name'],
+        ]);
+    }
+
+    // POST /admin/confirmImport. The only step that writes.
+    public function confirmImport(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/importStudents');
+        }
+
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->importError('Session expired. Please upload the file again.');
+            return;
+        }
+
+        $pending = $_SESSION[self::IMPORT_SESSION_KEY] ?? null;
+        if ($pending === null || empty($pending['rows'])) {
+            $this->importError('There is nothing waiting to be imported. Please upload the file again.');
+            return;
+        }
+
+        // Consume it immediately, so a double submit cannot import twice even
+        // if the second request arrives before the first has finished writing.
+        unset($_SESSION[self::IMPORT_SESSION_KEY]);
+
+        $import = new StudentImport();
+
+        // Hashing happens here, outside the transaction. This is the slow part.
+        $rows   = $import->prepare($pending['rows']);
+        $result = $import->commit($rows);
+
+        if ($result['error'] !== null) {
+            $this->importError($result['error']);
+            return;
+        }
+
+        // Hand the plaintext to the slips page and redirect, so a refresh of
+        // the result cannot re-post the import. The slips page clears this the
+        // moment it has rendered.
+        $_SESSION[self::CREDENTIALS_SESSION_KEY] = array_map(static function ($r) {
+            return [
+                'full_name'    => $r['full_name'],
+                'admission_no' => $r['admission_no'],
+                'class_label'  => $r['class_label'],
+                'password'     => $r['password'],
+            ];
+        }, $rows);
+
+        $this->redirect('admin/credentialSlips');
+    }
+
+    // GET /admin/credentialSlips. Renders once, then forgets.
+    public function credentialSlips(): void
+    {
+        $credentials = $_SESSION[self::CREDENTIALS_SESSION_KEY] ?? null;
+
+        // Cleared before rendering, not after: if the view throws half way
+        // through, the plaintext still does not survive into the next request.
+        unset($_SESSION[self::CREDENTIALS_SESSION_KEY]);
+
+        $this->view('admin/credential_slips', [
+            'credentials' => $credentials ?? [],
+        ]);
+    }
+
+    // Re-render the upload form carrying an error.
+    private function importError(string $message): void
+    {
+        $this->view('admin/import_students', [
+            'error'   => $message,
+            'classes' => (new SchoolClass())->selectable(),
+        ]);
+    }
+
+    private function uploadErrorMessage(int $code): string
+    {
+        switch ($code) {
+            case UPLOAD_ERR_NO_FILE:
+                return 'Please choose a CSV file to upload.';
+            case UPLOAD_ERR_INI_SIZE:
+            case UPLOAD_ERR_FORM_SIZE:
+                return 'That file is too large to upload.';
+            case UPLOAD_ERR_PARTIAL:
+                return 'The upload was interrupted. Please try again.';
+            default:
+                return 'The upload failed. Please try again.';
+        }
+    }
+
     // POST /admin/toggleStatus/{id}
     public function toggleStatus(string $id = ''): void
     {
