@@ -3,6 +3,16 @@
 -- ============ PEOPLE & ACCESS ============
 CREATE TABLE classes (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    -- ORDER OF THIS ENUM IS LOAD-BEARING. There is no rank column on this
+    -- table; MySQL sorts an ENUM by the ordinal of its declaration, and the
+    -- admin users list relies on that for its class ordering - it is what
+    -- makes JSS3 sort before SS1 instead of alphabetically.
+    --
+    -- Adding a value at the END is safe. Reordering these, or inserting one
+    -- in the middle, silently changes how every class-sorted list reads and
+    -- rewrites the stored ordinals of existing rows. To add a year group in
+    -- the middle, add it in the right position deliberately and re-check
+    -- UserListQuery::SORTS['class'] and its DEFAULT_ORDER.
     year_group ENUM('JSS1','JSS2','JSS3','SS1','SS2','SS3','UNASSIGNED') NOT NULL,
     arm VARCHAR(5) NOT NULL DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

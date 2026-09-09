@@ -41,6 +41,9 @@ define('APP_ROOT', dirname(__DIR__));
 
 require_once APP_ROOT . '/config/config.php';
 
+// Plain functions, so the autoloader below cannot reach them.
+require_once APP_ROOT . '/app/core/helpers.php';
+
 // ---- Autoloader: loads class files on demand ----
 spl_autoload_register(function (string $class) {
     $paths = [

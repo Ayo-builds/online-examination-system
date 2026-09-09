@@ -11,10 +11,34 @@ class AdminController extends Controller
         $this->view('admin/dashboard', ['user' => Auth::user()]);
     }
 
+    // GET /admin/users
+    //
+    // Search, filter, sort and pagination all resolve in UserListQuery, which
+    // validates every request value and hands back the WHERE fragment. The
+    // count and the page are built from that same fragment, so the page numbers
+    // always describe the rows on screen.
     public function users(): void
     {
-        $users = (new User())->allByNewest();
-        $this->view('admin/users', ['users' => $users]);
+        $userModel = new User();
+        $query     = new UserListQuery($_GET);
+
+        // Count first: the total is what tells us whether the requested page
+        // still exists, and clamping before fetching avoids serving an empty
+        // table for a bookmark to a page that has since fallen off the end.
+        $total = $userModel->countForList($query);
+        $query->clampToTotal($total);
+
+        $users = $userModel->forList($query);
+
+        $this->view('admin/users', [
+            'users'   => $users,
+            'query'   => $query,
+            'total'   => $total,
+            'classes' => (new SchoolClass())->selectable(),
+            // Only asked when the page came back empty, to tell "no matches"
+            // apart from "no users at all". No point paying for it otherwise.
+            'anyUsers' => $users !== [] ? true : $userModel->anyExist(),
+        ]);
     }
 
     // GET /admin/createUser. Show the form

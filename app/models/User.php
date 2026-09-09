@@ -91,6 +91,58 @@ class User extends Model
         return (int) $this->db->lastInsertId();
     }
 
+    // ---- Admin users list ---------------------------------------------------
+    //
+    // Both methods below take the SAME UserListQuery and call where() on it, so
+    // the count and the page are filtered identically by construction. There is
+    // no second copy of the criteria to fall out of step.
+    //
+    // The join is LEFT because a member of staff has no class and a student may
+    // not be placed in one yet; an INNER join would silently drop them from the
+    // list entirely.
+    private const LIST_FROM = "  FROM users u
+                            LEFT JOIN classes c ON c.id = u.class_id";
+
+    public function countForList(UserListQuery $query): int
+    {
+        [$where, $bindings] = $query->where();
+
+        return (int) $this->query(
+            "SELECT COUNT(*)" . self::LIST_FROM . $where,
+            $bindings
+        )->fetchColumn();
+    }
+
+    public function forList(UserListQuery $query): array
+    {
+        [$where, $bindings] = $query->where();
+
+        // LIMIT and OFFSET are cast to int in PHP and interpolated, not bound.
+        // Binding them is possible but MySQL will not accept a string there
+        // under emulated prepares off, and an int cast is the whole of the
+        // validation these two need. Both come from UserListQuery, where page
+        // is floored at 1 and per_page is an allowlist member.
+        $limit  = (int) $query->perPage;
+        $offset = (int) $query->offset();
+
+        return $this->query(
+            "SELECT u.id, u.full_name, u.email, u.admission_no, u.role, u.status,
+                    u.created_at, c.year_group, c.arm"
+            . self::LIST_FROM
+            . $where
+            . $query->orderBy()
+            . " LIMIT {$limit} OFFSET {$offset}",
+            $bindings
+        )->fetchAll();
+    }
+
+    // Does the table hold any user at all? Distinguishes "nothing matches these
+    // filters" from "nothing here yet", which need different empty states.
+    public function anyExist(): bool
+    {
+        return (int) $this->query("SELECT COUNT(*) FROM users")->fetchColumn() > 0;
+    }
+
     // One user with their class joined on, for a slip. Model::find() is a
     // plain SELECT * and carries no year_group or arm, so a slip built from
     // it would silently lose the class.
