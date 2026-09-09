@@ -1994,3 +1994,34 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
     margin: 12mm;
   }
 }
+
+/* -- Bulk enrolment confirmation --
+   The counts are the whole screen: an admin decides from these three numbers,
+   so they are set as a short list at reading size rather than shrunk into the
+   help text they sit above. The two lines that describe rows NOT being touched
+   are muted, so the one number that means "this will happen" leads. */
+.confirm-counts {
+  padding: 0.9rem 1.05rem;
+  margin-bottom: 0.9rem;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.confirm-counts__lead {
+  margin: 0 0 0.55rem;
+  color: var(--slate);
+  font-size: var(--t-small);
+}
+
+.confirm-counts__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.confirm-counts__list li {
+  color: var(--ink);
+}

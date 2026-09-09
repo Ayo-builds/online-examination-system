@@ -629,7 +629,24 @@ class AdminController extends Controller
         $this->redirect('admin/courses');
     }
 
+    // The pending bulk enrolment, between the confirmation screen and the
+    // write. Held in the session rather than in hidden form fields for the same
+    // reason the import preview is: the numbers an admin was shown are what the
+    // result is judged against, and a number the browser could edit would make
+    // that comparison worthless.
+    private const BULK_ENROLL_SESSION_KEY = 'bulk_enrollment_pending';
+
+    // The outcome of the last bulk enrolment, shown once on the roll it changed.
+    private const BULK_ENROLL_RESULT_SESSION_KEY = 'bulk_enrollment_result';
+
     // GET /admin/enrollments/{courseId}
+    //
+    // Search, filter, sort and pagination all resolve in EnrollmentListQuery,
+    // which validates every request value and hands back the WHERE fragment.
+    // The count and the page are built from that same fragment, so the page
+    // numbers always describe the rows on screen. Same arrangement as the users
+    // list; the course id is the one thing that comes from the path rather than
+    // the query string.
     public function enrollments(string $courseId = ''): void
     {
         $courseId = (int) $courseId;
@@ -640,12 +657,125 @@ class AdminController extends Controller
         }
 
         $enrollmentModel = new Enrollment();
+        $query           = new EnrollmentListQuery($courseId, $_GET);
+
+        // Count first: the total is what tells us whether the requested page
+        // still exists, and clamping before fetching avoids serving an empty
+        // table for a bookmark to a page that has since fallen off the end.
+        $total = $enrollmentModel->countForList($query);
+        $query->clampToTotal($total);
+
+        $enrolled = $enrollmentModel->forList($query);
+
+        // A one-shot result from the last bulk enrolment, if there was one.
+        $bulkResult = $_SESSION[self::BULK_ENROLL_RESULT_SESSION_KEY] ?? null;
+        unset($_SESSION[self::BULK_ENROLL_RESULT_SESSION_KEY]);
 
         $this->view('admin/enrollments', [
-            'course'    => $course,
-            'enrolled'  => $enrollmentModel->studentsInCourse($courseId),
-            'available' => $enrollmentModel->studentsNotInCourse($courseId),
+            'course'     => $course,
+            'enrolled'   => $enrolled,
+            'query'      => $query,
+            'total'      => $total,
+            'available'  => $enrollmentModel->studentsNotInCourse($courseId),
+            'classes'    => $enrollmentModel->classesInCourse($courseId),
+            'bulkClasses' => (new SchoolClass())->selectableWithCounts(),
+            'bulkResult' => $bulkResult,
+            // Only asked when the page came back empty, to tell "no matches"
+            // apart from "nobody enrolled yet". No point paying for it otherwise.
+            'anyEnrolled' => $enrolled !== [] ? true : $enrollmentModel->anyInCourse($courseId),
         ]);
+    }
+
+    // POST /admin/bulkEnroll/{courseId}. The confirmation step. Writes nothing.
+    //
+    // Deliberately a POST and a full page rather than a JavaScript confirm():
+    // the numbers that make the decision - how many will be enrolled, how many
+    // are already on the roll, how many are suspended and will be left out -
+    // can only be counted on the server, and a dialog that says "are you sure?"
+    // without them is not a confirmation, just a speed bump.
+    public function bulkEnroll(string $courseId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/courses');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('admin/courses');
+        }
+
+        $courseId = (int) $courseId;
+        $classId  = (int) ($_POST['class_id'] ?? 0);
+
+        $course = (new Course())->find($courseId);
+        $class  = $classId > 0 ? (new SchoolClass())->find($classId) : null;
+
+        if ($course === null) {
+            $this->redirect('admin/courses');
+        }
+        if ($class === null) {
+            $this->redirect('admin/enrollments/' . $courseId);
+        }
+
+        $preview = (new Enrollment())->bulkPreview($courseId, $classId);
+
+        // Stashed so the write can be judged against exactly the figures on the
+        // screen the admin agreed to, and so the confirm step cannot be aimed
+        // at a different class than the one that was previewed.
+        $_SESSION[self::BULK_ENROLL_SESSION_KEY] = [
+            'course_id' => $courseId,
+            'class_id'  => $classId,
+            'preview'   => $preview,
+        ];
+
+        $this->view('admin/bulk_enroll_confirm', [
+            'course'  => $course,
+            'class'   => $class,
+            'preview' => $preview,
+        ]);
+    }
+
+    // POST /admin/confirmBulkEnroll/{courseId}. The only step that writes.
+    public function confirmBulkEnroll(string $courseId = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/courses');
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('admin/courses');
+        }
+
+        $courseId = (int) $courseId;
+        $pending  = $_SESSION[self::BULK_ENROLL_SESSION_KEY] ?? null;
+        unset($_SESSION[self::BULK_ENROLL_SESSION_KEY]);
+
+        // No pending preview, or one raised for a different course: the admin
+        // has gone back, refreshed, or opened two tabs. Nothing is written on a
+        // guess about which class they meant.
+        if ($pending === null || (int) $pending['course_id'] !== $courseId) {
+            $this->redirect('admin/enrollments/' . $courseId);
+        }
+
+        $classId = (int) $pending['class_id'];
+        $class   = (new SchoolClass())->find($classId);
+
+        if ((new Course())->find($courseId) === null || $class === null) {
+            $this->redirect('admin/courses');
+        }
+
+        $outcome = (new Enrollment())->enrollClass($courseId, $classId);
+
+        // Preview and confirm are two requests, and the class can change
+        // between them - a student added, suspended, or enrolled by somebody
+        // else in another tab. Both sets of numbers are carried into the result
+        // so that a run which did not do what the screen promised says so,
+        // instead of quietly reporting the actual figure as if it had been the
+        // plan all along.
+        $_SESSION[self::BULK_ENROLL_RESULT_SESSION_KEY] = [
+            'class_label' => SchoolClass::labelFor($class),
+            'promised'    => $pending['preview'],
+            'actual'      => $outcome,
+        ];
+
+        $this->redirect('admin/enrollments/' . $courseId);
     }
 
     // POST /admin/enroll/{courseId}
