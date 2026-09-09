@@ -86,11 +86,18 @@ $inClass   = $eligible + $already + $suspended;
               action="<?= BASE_URL ?>admin/confirmBulkEnroll/<?= (int) $course['id'] ?>">
             <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">
 
+            <!-- With nobody to enrol, the run would write nothing. The button
+                 is disabled rather than hidden, so the page still reads as the
+                 same screen with its action unavailable, and Cancel takes the
+                 primary styling because leaving is now the only thing worth
+                 doing here. -->
             <div class="form-actions">
-                <button type="submit" class="btn btn--primary">
+                <button type="submit"
+                        class="btn <?= $eligible === 0 ? 'btn--quiet' : 'btn--primary' ?>"
+                        <?= $eligible === 0 ? 'disabled' : '' ?>>
                     Enrol <?= (int) $eligible ?> student<?= $eligible === 1 ? '' : 's' ?>
                 </button>
-                <a class="btn btn--quiet"
+                <a class="btn <?= $eligible === 0 ? 'btn--primary' : 'btn--quiet' ?>"
                    href="<?= BASE_URL ?>admin/enrollments/<?= (int) $course['id'] ?>">Cancel</a>
             </div>
         </form>
