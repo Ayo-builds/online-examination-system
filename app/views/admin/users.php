@@ -28,11 +28,11 @@ $lastRow   = min($query->offset() + $query->perPage, $total);
 
 // A sortable column header. The href comes from the query object, so it carries
 // every filter currently in force rather than resetting the list.
+// The arrow is the only thing marking the column in force - no second cue from
+// colour or weight, which would make every header look half-active.
 $sortable = static function (string $key, string $label) use ($query, $listUrl): void {
-    $isOn = $query->sortIndicator($key) !== '';
     printf(
-        '<a class="th-sort%s" href="%s">%s<span class="th-sort__mark">%s</span></a>',
-        $isOn ? ' th-sort--on' : '',
+        '<a class="th-sort" href="%s">%s<span class="th-sort__mark">%s</span></a>',
         e($listUrl . $query->sortUrl($key)),
         e($label),
         e($query->sortIndicator($key))
@@ -46,7 +46,7 @@ $sortable = static function (string $key, string $label) use ($query, $listUrl):
          token in a query string is exactly the thing that gets shared. -->
     <form class="filters" method="GET" action="<?= e($listUrl) ?>">
         <div class="filters__row">
-            <div class="field field--inline">
+            <div class="field field--inline filters__search">
                 <label for="q">Search</label>
                 <input type="search" id="q" name="q" value="<?= e($query->q) ?>"
                        placeholder="Name, admission number or email"
@@ -83,17 +83,6 @@ $sortable = static function (string $key, string $label) use ($query, $listUrl):
             </div>
             <?php endif; ?>
 
-            <div class="field field--inline">
-                <label for="per_page">Per page</label>
-                <select id="per_page" name="per_page">
-                    <?php foreach (UserListQuery::PER_PAGES as $size): ?>
-                        <option value="<?= (int) $size ?>" <?= $query->perPage === $size ? 'selected' : '' ?>>
-                            <?= (int) $size ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
             <div class="filters__actions">
                 <button type="submit" class="btn btn--primary btn--sm">Apply</button>
                 <?php if ($query->hasActiveFilters()): ?>
@@ -102,9 +91,11 @@ $sortable = static function (string $key, string $label) use ($query, $listUrl):
             </div>
         </div>
 
-        <!-- Sort and direction ride along as hidden fields so applying a filter
-             keeps the column you were sorted by. Page deliberately does not:
-             a new filter starts at page 1. -->
+        <!-- Sort, direction and page size ride along as hidden fields so that
+             applying a filter keeps the column you were sorted by and the page
+             size you chose. Page deliberately does not: a new filter starts at
+             page 1. -->
+        <input type="hidden" name="per_page" value="<?= (int) $query->perPage ?>">
         <?php if ($query->sort !== null): ?>
             <input type="hidden" name="sort" value="<?= e($query->sort) ?>">
             <input type="hidden" name="dir" value="<?= e(strtolower($query->dir)) ?>">
@@ -150,12 +141,9 @@ $sortable = static function (string $key, string $label) use ($query, $listUrl):
         <?php if ($anyUsers): ?>
             <!-- Filtered to nothing. There ARE users; these criteria just miss
                  them all, so the way out is to widen the filters. -->
-            <div class="empty">
-                <p><strong>No users match these filters.</strong></p>
-                <p class="muted small">
-                    Try a shorter search, a different role, or clear the filters to start again.
-                </p>
-                <p><a class="btn btn--primary btn--sm" href="<?= e($listUrl) ?>">Clear filters</a></p>
+            <div class="empty empty--tight">
+                <p>No users match these filters.</p>
+                <a class="btn btn--primary btn--sm" href="<?= e($listUrl) ?>">Clear filters</a>
             </div>
         <?php else: ?>
             <!-- Genuinely empty table. Nothing to clear; the way out is to
@@ -211,12 +199,15 @@ $sortable = static function (string $key, string $label) use ($query, $listUrl):
                         <?php endif; ?>
                     </td>
 
-                    <td class="col--secondary"><span class="tag"><?= e($u['role']) ?></span></td>
+                    <!-- Role is plain text: every row has one, so a pill on
+                         each adds colour without adding information. -->
+                    <td class="col--secondary small"><?= e($u['role']) ?></td>
 
+                    <!-- Only the exception is marked. Active is the norm and
+                         needs no badge; a column of green pills would bury the
+                         one suspended account it exists to surface. -->
                     <td>
-                        <?php if ($u['status'] === 'active'): ?>
-                            <span class="tag tag--ok">Active</span>
-                        <?php else: ?>
+                        <?php if ($u['status'] !== 'active'): ?>
                             <span class="tag tag--flag">Suspended</span>
                         <?php endif; ?>
                     </td>
@@ -253,9 +244,27 @@ $sortable = static function (string $key, string $label) use ($query, $listUrl):
         </table>
     </div>
 
+    <!-- Page size and pager share a bar under the table. Both build their
+         hrefs from the same query object as the sort links, so neither can drop
+         a filter that is in force. -->
+    <div class="pager-bar">
+
+        <div class="per-page">
+            <span class="per-page__label">Per page</span>
+            <?php foreach (UserListQuery::PER_PAGES as $size): ?>
+                <?php if ($size === $query->perPage): ?>
+                    <span class="per-page__opt per-page__opt--on" aria-current="true"><?= (int) $size ?></span>
+                <?php else: ?>
+                    <!-- Back to page 1: page 6 of 50-per-page is not page 6 of
+                         25-per-page, so carrying the number over would land
+                         somewhere arbitrary. -->
+                    <a class="per-page__opt"
+                       href="<?= e($listUrl . $query->urlWith(['per_page' => $size, 'page' => 1])) ?>"><?= (int) $size ?></a>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+
     <?php if ($lastPage > 1): ?>
-    <!-- Every href is built by the query object from the current params, so
-         paging never silently drops the search or the sort. -->
     <nav class="pager" aria-label="Pagination">
         <?php if ($query->page > 1): ?>
             <a class="pager__step" href="<?= e($listUrl . $query->urlWith(['page' => $query->page - 1])) ?>"
@@ -298,6 +307,8 @@ $sortable = static function (string $key, string $label) use ($query, $listUrl):
         <?php endif; ?>
     </nav>
     <?php endif; ?>
+
+    </div>
 
     <?php endif; ?>
 

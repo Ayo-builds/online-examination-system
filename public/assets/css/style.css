@@ -658,8 +658,11 @@ h2.section {
   text-decoration: none;
   white-space: nowrap;
 }
-.th-sort:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
-.th-sort--on   { color: var(--ink); }
+/* No underline at rest, underline on hover. The active column is marked by
+   its arrow alone - a colour or weight change as well made every header
+   look half-active. */
+.th-sort:hover,
+.th-sort:focus-visible { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 
 .th-sort__mark {
   font-size: 0.6rem;
@@ -720,8 +723,122 @@ h2.section {
   color: var(--slate);
 }
 
+/* -- Filter bar on a wide page --------------------------------------------
+   The global `input, select, textarea { width: 100% }` is a form rule: right
+   for a stacked column of fields inside shell--tight, wrong for a filter bar
+   on a full-width table page, where it was what forced every control onto its
+   own line. These rules undo it inside .filters only, so the form pages that
+   depend on the global rule are untouched.
+
+   Search takes a fixed 320px because it is the control people aim at; the
+   selects take their content width so a two-item Role menu does not occupy the
+   same space as a nineteen-item Class menu. */
+.filters__row {
+  flex-wrap: wrap;   /* two rows is better than a squeezed one at odd widths */
+}
+
+.filters .field--inline {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.filters__search { flex: 0 0 20rem; }        /* 320px */
+.filters__search input { width: 100%; }
+
+.filters select {
+  width: auto;
+  min-width: 0;
+  padding-right: 1.9rem;   /* room for the native arrow */
+}
+
+.filters__actions { flex: 0 0 auto; }
+
+/* One row is only honest above about 790px, which is what these controls
+   actually measure: 320 search + ~140 role + ~120 class + ~140 buttons + gaps
+   and the bar's own padding. Below 44rem they stop sharing a line usefully at
+   all and go full width, one per row. */
+@media (max-width: 43.999rem) {
+  .filters .field--inline,
+  .filters__search,
+  .filters__actions {
+    flex: 1 1 100%;
+  }
+  .filters__search input,
+  .filters select { width: 100%; }
+  .filters__actions { margin-left: 0; }
+}
+
+/* -- Page size, sitting with the pager ------------------------------------
+   Links rather than a select, so changing the page size goes through the same
+   query-string helper as every sort and page link and cannot drop a filter.
+   No JavaScript, and nothing to submit. */
+.pager-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+}
+
+/* The pager keeps its own layout but no longer owns the top margin, now that
+   it sits inside the bar. */
+.pager-bar .pager { margin-top: 0; }
+
+.per-page {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--t-small);
+  color: var(--slate);
+}
+
+.per-page__label {
+  text-transform: uppercase;
+  letter-spacing: var(--ls-micro);
+  font-size: 0.68rem;
+  margin-right: 0.15rem;
+}
+
+.per-page__opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9rem;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--slate);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.per-page__opt:hover { color: var(--graphite); border-color: var(--slate); }
+
+.per-page__opt--on {
+  color: var(--surface);
+  background: var(--graphite);
+  border-color: var(--graphite);
+  font-weight: 600;
+}
+
+/* -- Empty state, reduced --------------------------------------------------
+   The summary line above already names every filter in force, so the box says
+   what happened once and offers the way out. Nothing else. */
+.empty--tight {
+  padding: 1.5rem 1.25rem;
+}
+
+.empty--tight p {
+  margin: 0 0 0.75rem;
+}
+
+
 @media (max-width: 47.999rem) {
-  .filters__actions { margin-left: 0; width: 100%; }
+  /* .filters__actions used to go full width here too, which broke the single
+     row between 44 and 48rem. The filter bar now stacks in one step, at
+     43.999rem, and nothing about it changes before then. */
   .pager { justify-content: center; }
 }
 
