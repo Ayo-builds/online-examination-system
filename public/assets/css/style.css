@@ -305,6 +305,41 @@ a:hover { color: var(--ok-deep); }
 .shell--narrow { max-width: 60rem; }
 .shell--tight  { max-width: 46rem; }
 
+/* -- Wide shell, for data-heavy pages -------------------------------------
+   The default shell is a reading column: 1180px, or 60rem / 46rem for the
+   narrower variants. That is right for a form or a detail page, where a long
+   line is tiring to read. It is wrong for a table, which then overflows and
+   scrolls sideways while a laptop screen sits half empty either side.
+
+   This variant takes the viewport instead, with padding that grows with it.
+   The 120rem ceiling is not a reading measure - a table has no measure - it
+   only stops a row of seven columns being stretched across an ultrawide
+   monitor into something the eye has to track across. At every laptop size it
+   is the viewport that binds, not the cap. */
+.shell--wide {
+  max-width: 120rem;
+  padding-inline: clamp(1rem, 4vw, 3rem);
+}
+
+/* -- Column priority ------------------------------------------------------
+   A table column that is merely useful should not be what pushes the columns
+   that identify a person, and the controls that act on them, off the screen.
+   These two classes drop the least important columns as the viewport narrows,
+   in the order we would give up on them.
+
+   The users table needs about 930px for all seven columns. Below 62rem the
+   available width falls under that, which is why the first breakpoint sits
+   exactly there rather than at a round number chosen by eye. Both values are
+   already breakpoints elsewhere in this stylesheet. */
+@media (max-width: 61.999rem) {
+  .data-table .col--optional { display: none; }
+}
+
+@media (max-width: 47.999rem) {
+  .data-table .col--secondary { display: none; }
+}
+
+
 .page__head {
   display: flex;
   align-items: flex-end;

@@ -9,7 +9,7 @@
 <body>
 <?php $nav_current = 'users'; require APP_ROOT . '/app/views/_partials/topbar.php'; ?>
 
-<main class="shell shell--narrow">
+<main class="shell shell--wide">
 
 <?php
 $page_title = 'Users';
@@ -28,10 +28,9 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                     <th>Name</th>
                     <th>Admission no.</th>
                     <th>Class</th>
-                    <th>Email</th>
-                    <th>Role</th>
+                    <th class="col--secondary">Role</th>
                     <th>Status</th>
-                    <th>Joined</th>
+                    <th class="col--optional">Joined</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -41,10 +40,10 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                 <tr>
                     <td><?= htmlspecialchars($u['full_name']) ?></td>
 
-                    <!-- Staff have no admission number and students may have no
-                         email, so both columns carry an explicit em dash rather
-                         than an empty cell. htmlspecialchars(null) is deprecated
-                         from PHP 8.1, which is the other reason for the branch. -->
+                    <!-- Staff have no admission number, so the cell carries an
+                         explicit em dash rather than sitting empty. That branch
+                         also keeps a null away from htmlspecialchars, which is
+                         deprecated from PHP 8.1. -->
                     <td class="small nowrap">
                         <?php if ($u['admission_no'] !== null): ?>
                             <?= htmlspecialchars($u['admission_no']) ?>
@@ -66,15 +65,8 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                         <?php endif; ?>
                     </td>
 
-                    <td class="small">
-                        <?php if ($u['email'] !== null): ?>
-                            <?= htmlspecialchars($u['email']) ?>
-                        <?php else: ?>
-                            <span class="muted">&mdash;</span>
-                        <?php endif; ?>
-                    </td>
 
-                    <td><span class="tag"><?= htmlspecialchars($u['role']) ?></span></td>
+                    <td class="col--secondary"><span class="tag"><?= htmlspecialchars($u['role']) ?></span></td>
                     <td>
                         <?php if ($u['status'] === 'active'): ?>
                             <span class="tag tag--ok">Active</span>
@@ -82,7 +74,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                             <span class="tag tag--flag">Suspended</span>
                         <?php endif; ?>
                     </td>
-                    <td class="small nowrap"><?= htmlspecialchars($u['created_at']) ?></td>
+                    <td class="small nowrap col--optional"><?= htmlspecialchars(date('j M Y', strtotime($u['created_at']))) ?></td>
                     <td class="actions actions--links">
                         <?php $isSelf = (int) $u['id'] === (int) Auth::user()['id']; ?>
 

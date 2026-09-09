@@ -9,7 +9,7 @@
 <body>
 <?php $nav_current = 'courses'; require APP_ROOT . '/app/views/_partials/topbar.php'; ?>
 
-<main class="shell shell--tight">
+<main class="shell shell--wide">
 
 <?php
 $page_title = 'Enrolments';
