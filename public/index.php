@@ -39,7 +39,29 @@ header('X-XSS-Protection: 0');
 // APP_ROOT = the exam-system folder itself (one level UP from /public)
 define('APP_ROOT', dirname(__DIR__));
 
-require_once APP_ROOT . '/config/config.php';
+// Which config to load. Normally there is no choice: config/config.php.
+//
+// A test run may point the app at its own config instead, but ONLY under PHP's
+// built-in server, which is never how this application is served in production
+// - Apache and nginx report 'apache2handler' and 'fpm-fcgi', not 'cli-server'.
+// So this override cannot be reached over the network, and testing never
+// requires editing config/config.php.
+$configFile = APP_ROOT . '/config/config.php';
+
+if (PHP_SAPI === 'cli-server') {
+    $override = getenv('EXAM_CONFIG');
+    if (is_string($override) && $override !== '') {
+        $candidate = $override[0] === '/' || preg_match('#^[A-Za-z]:#', $override)
+            ? $override
+            : APP_ROOT . '/' . $override;
+
+        if (is_file($candidate)) {
+            $configFile = $candidate;
+        }
+    }
+}
+
+require_once $configFile;
 
 // Plain functions, so the autoloader below cannot reach them.
 require_once APP_ROOT . '/app/core/helpers.php';
