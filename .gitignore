@@ -4,6 +4,14 @@ logs/
 seed*.php
 node_modules/
 
+# Stray documents dropped into the fixtures directory. What belongs there is
+# the CSVs and the generator, all of them tiny and readable; a PDF or a
+# spreadsheet landing here is something someone parked mid-task, not a
+# fixture, and it should not be staged by a careless "git add .".
+database/fixtures/*.pdf
+database/fixtures/*.xlsx
+database/fixtures/*.docx
+
 # Database dumps. These carry live data and password hashes, so they must never
 # be committed. Anchored to the repository root so database/schema.sql, which is
 # structure only and IS tracked, stays unaffected.
