@@ -91,6 +91,50 @@ class User extends Model
         return (int) $this->db->lastInsertId();
     }
 
+    // One user with their class joined on, for a slip. Model::find() is a
+    // plain SELECT * and carries no year_group or arm, so a slip built from
+    // it would silently lose the class.
+    public function findWithClass(int $id): ?array
+    {
+        $row = $this->query(
+            "SELECT u.*, c.year_group, c.arm
+               FROM users u
+          LEFT JOIN classes c ON c.id = u.class_id
+              WHERE u.id = ? LIMIT 1",
+            [$id]
+        )->fetch();
+
+        return $row ?: null;
+    }
+
+    // Replace someone's password. Takes a hash, never a plaintext: the caller
+    // generates and hashes so it still holds the plaintext to put on a slip,
+    // and this method has no way to write one by accident.
+    public function setPasswordHash(int $id, string $hash): void
+    {
+        $this->query(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            [$hash, $id]
+        );
+    }
+
+    // Active students in one class, for a whole-class password reset.
+    // Suspended accounts are left out: reissuing a credential for an account
+    // that cannot sign in wastes a slip and confuses whoever hands it over.
+    public function activeStudentsInClass(int $classId): array
+    {
+        return $this->query(
+            "SELECT u.id, u.full_name, u.admission_no, c.year_group, c.arm
+               FROM users u
+          LEFT JOIN classes c ON c.id = u.class_id
+              WHERE u.role = 'student'
+                AND u.status = 'active'
+                AND u.class_id = ?
+           ORDER BY u.full_name",
+            [$classId]
+        )->fetchAll();
+    }
+
     public function setStatus(int $id, string $status): void
     {
         $this->query(

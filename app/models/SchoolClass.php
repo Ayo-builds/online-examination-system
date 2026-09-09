@@ -22,6 +22,24 @@ class SchoolClass extends Model
         )->fetchAll();
     }
 
+    // Real classes with how many active students each holds, for the
+    // whole-class reset picker. A class with nobody in it is still listed, so
+    // an admin can see it exists rather than wondering where it went.
+    public function selectableWithCounts(): array
+    {
+        return $this->query(
+            "SELECT c.id, c.year_group, c.arm,
+                    (SELECT COUNT(*) FROM users u
+                      WHERE u.class_id = c.id
+                        AND u.role = 'student'
+                        AND u.status = 'active') AS student_count
+               FROM classes c
+              WHERE c.year_group <> ?
+           ORDER BY c.year_group, c.arm",
+            [self::PLACEHOLDER]
+        )->fetchAll();
+    }
+
     // "SS3A", or "SS3" for a school with a single stream.
     public static function label(?string $yearGroup, ?string $arm): string
     {

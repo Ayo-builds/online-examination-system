@@ -59,11 +59,11 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                             <span class="tag tag--flag">Suspended</span>
                         <?php endif; ?>
                     </td>
-                    <td class="actions">
+                    <td class="actions actions--links">
                         <form method="POST" action="<?= BASE_URL ?>admin/unenroll/<?= (int) $course['id'] ?>">
                             <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
                             <input type="hidden" name="student_id" value="<?= (int) $s['id'] ?>">
-                            <button type="submit" class="btn btn--danger-quiet btn--sm">Remove</button>
+                            <button type="submit" class="act-link act-link--danger">Remove</button>
                         </form>
                     </td>
                 </tr>

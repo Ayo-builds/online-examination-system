@@ -260,14 +260,19 @@ class AdminController extends Controller
         // Hand the plaintext to the slips page and redirect, so a refresh of
         // the result cannot re-post the import. The slips page clears this the
         // moment it has rendered.
-        $_SESSION[self::CREDENTIALS_SESSION_KEY] = array_map(static function ($r) {
-            return [
-                'full_name'    => $r['full_name'],
-                'admission_no' => $r['admission_no'],
-                'class_label'  => $r['class_label'],
-                'password'     => $r['password'],
-            ];
-        }, $rows);
+        $_SESSION[self::CREDENTIALS_SESSION_KEY] = [
+            'context' => 'import',
+            'label'   => $pending['filename'],
+            'rows'    => array_map(static function ($r) {
+                return [
+                    'full_name'    => $r['full_name'],
+                    'admission_no' => $r['admission_no'],
+                    'email'        => '',
+                    'class_label'  => $r['class_label'],
+                    'password'     => $r['password'],
+                ];
+            }, $rows),
+        ];
 
         $this->redirect('admin/credentialSlips');
     }
@@ -275,14 +280,19 @@ class AdminController extends Controller
     // GET /admin/credentialSlips. Renders once, then forgets.
     public function credentialSlips(): void
     {
-        $credentials = $_SESSION[self::CREDENTIALS_SESSION_KEY] ?? null;
+        $payload = $_SESSION[self::CREDENTIALS_SESSION_KEY] ?? null;
 
         // Cleared before rendering, not after: if the view throws half way
         // through, the plaintext still does not survive into the next request.
         unset($_SESSION[self::CREDENTIALS_SESSION_KEY]);
 
         $this->view('admin/credential_slips', [
-            'credentials' => $credentials ?? [],
+            'credentials' => $payload['rows'] ?? [],
+            'context'     => $payload['context'] ?? 'import',
+            // Not 'label': the topbar partial runs a nav loop in the view's
+            // scope, and a plain $label there gets overwritten by the last nav
+            // link's text.
+            'slip_label'  => $payload['label'] ?? '',
         ]);
     }
 
@@ -361,6 +371,145 @@ class AdminController extends Controller
         ];
 
         $this->redirect('admin/importBatches');
+    }
+
+    // ---- Password resets -----------------------------------------------------
+    //
+    // There is no self-service password change anywhere in this app, so a
+    // forgotten password is an admin action. Both paths below issue a new
+    // random credential, store only its hash, and hand the plaintext to the
+    // same slip page the bulk import uses.
+
+    // POST /admin/resetPassword/{id}. One person.
+    public function resetPassword(string $id = ''): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/users');
+        }
+
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('admin/users');
+        }
+
+        $userModel = new User();
+        $user      = $userModel->findWithClass((int) $id);
+
+        if ($user === null) {
+            $this->redirect('admin/users');
+        }
+
+        $plaintext = Password::generate();
+        $userModel->setPasswordHash((int) $user['id'], Password::hash($plaintext));
+
+        $_SESSION[self::CREDENTIALS_SESSION_KEY] = [
+            'context' => 'reset',
+            'label'   => '',
+            'rows'    => [$this->slipRowFor($user, $plaintext)],
+        ];
+
+        $this->redirect('admin/credentialSlips');
+    }
+
+    // GET /admin/resetClass. Pick a class.
+    public function resetClass(): void
+    {
+        $this->view('admin/reset_class', [
+            'classes' => (new SchoolClass())->selectableWithCounts(),
+        ]);
+    }
+
+    // POST /admin/resetClassPasswords. A whole class at once.
+    public function resetClassPasswords(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/resetClass');
+        }
+
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->redirect('admin/resetClass');
+        }
+
+        $classId    = (int) ($_POST['class_id'] ?? 0);
+        $classModel = new SchoolClass();
+        $class      = $classId > 0 ? $classModel->find($classId) : null;
+
+        if ($class === null || $class['year_group'] === SchoolClass::PLACEHOLDER) {
+            $this->view('admin/reset_class', [
+                'error'   => 'Please choose a class.',
+                'classes' => $classModel->selectableWithCounts(),
+            ]);
+            return;
+        }
+
+        $userModel = new User();
+        $students  = $userModel->activeStudentsInClass($classId);
+
+        if ($students === []) {
+            $this->view('admin/reset_class', [
+                'error'   => 'There are no active students in ' . SchoolClass::labelFor($class) . '.',
+                'classes' => $classModel->selectableWithCounts(),
+            ]);
+            return;
+        }
+
+        // Same shape as the import: hash everything first, write afterwards.
+        // A class is smaller than a 250-row import, but bcrypt costs the same
+        // per row and the time limit is refreshed for the same reason.
+        $issued = [];
+        foreach ($students as $s) {
+            set_time_limit(30);
+            $plaintext = Password::generate();
+            $issued[]  = [
+                'user'      => $s,
+                'plaintext' => $plaintext,
+                'hash'      => Password::hash($plaintext),
+            ];
+        }
+
+        // All or nothing. A class half-reset, with no record of which half, is
+        // worse than a failed reset the admin can simply repeat.
+        $db = Database::getInstance();
+        $db->beginTransaction();
+        try {
+            foreach ($issued as $i) {
+                $userModel->setPasswordHash((int) $i['user']['id'], $i['hash']);
+            }
+            $db->commit();
+        } catch (PDOException $e) {
+            $db->rollBack();
+            error_log('Class password reset failed: ' . $e->getMessage());
+            $this->view('admin/reset_class', [
+                'error'   => 'The reset failed and no password was changed. Please try again.',
+                'classes' => $classModel->selectableWithCounts(),
+            ]);
+            return;
+        }
+
+        $rows = [];
+        foreach ($issued as $i) {
+            $rows[] = $this->slipRowFor($i['user'], $i['plaintext']);
+        }
+
+        $_SESSION[self::CREDENTIALS_SESSION_KEY] = [
+            'context' => 'reset_class',
+            'label'   => SchoolClass::labelFor($class),
+            'rows'    => $rows,
+        ];
+
+        $this->redirect('admin/credentialSlips');
+    }
+
+    // One slip's worth of data. Staff carry an email and no admission number,
+    // students the reverse, and the slip partial renders whichever is present.
+    private function slipRowFor(array $user, string $plaintext): array
+    {
+        return [
+            'full_name'    => $user['full_name'],
+            'admission_no' => $user['admission_no'] ?? '',
+            'email'        => $user['email'] ?? '',
+            'class_label'  => SchoolClass::labelFor($user),
+            'password'     => $plaintext,
+        ];
     }
 
     // POST /admin/toggleStatus/{id}

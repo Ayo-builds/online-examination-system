@@ -502,6 +502,65 @@ h2.section {
 .data-table .actions a { margin-right: 0.65rem; }
 .data-table .actions a:last-child { margin-right: 0; }
 
+/* ---------- Row actions as text links ------------------------------------ */
+/* A column of outlined red buttons shouts on every row and turns a rare,
+   reversible action into the loudest thing on the page. These carry the same
+   actions as quiet text, so the eye lands on the data instead. The colour
+   arrives on hover, where the intent is already deliberate.
+
+   They are <button>s inside forms, not <a>s: every one of these actions is a
+   POST carrying a CSRF token, and a link cannot do that. Only the appearance
+   is demoted. */
+
+.actions--links {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+/* Each action is wrapped in its own form; the form must not add layout. */
+.actions--links form {
+  display: inline;
+  margin: 0;
+}
+
+.act-link {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font-family: var(--body);
+  font-size: var(--t-small);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--slate);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: color 0.12s ease, text-decoration-color 0.12s ease;
+}
+
+.act-link:hover,
+.act-link:focus-visible {
+  color: var(--graphite);
+  text-decoration-color: currentColor;
+}
+
+/* Destructive actions stay quiet until the pointer is on them. */
+.act-link--danger:hover,
+.act-link--danger:focus-visible {
+  color: var(--danger);
+}
+
+.act-sep {
+  color: var(--line);
+  font-size: var(--t-small);
+  user-select: none;
+}
+
+
 .table-empty {
   padding: 2rem 1rem;
   text-align: center;

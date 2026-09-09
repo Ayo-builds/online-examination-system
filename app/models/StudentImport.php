@@ -28,12 +28,9 @@ class StudentImport extends Model
     public const MAX_ROWS  = 500;
     public const MAX_BYTES = 1048576;   // 1 MB. A 500-row CSV is well under 50 KB.
 
-    // Ambiguous glyphs are left out: no I or 1, no O or 0. These passwords are
-    // read off a printed slip by a teenager and typed into a browser, and an
-    // initial credential that cannot be typed is a support call, not security.
-    private const PASSWORD_ALPHABET   = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-    private const PASSWORD_GROUPS     = 3;
-    private const PASSWORD_GROUP_LEN  = 4;
+    // Password generation lives in Password: the reset actions hand out the
+    // same kind of credential on the same slip layout, and two generators
+    // would drift apart.
 
     private const ADMISSION_PREFIX = 'ADM';
 
@@ -216,8 +213,8 @@ class StudentImport extends Model
     {
         foreach ($rows as &$r) {
             set_time_limit(30);
-            $r['password']      = self::generatePassword();
-            $r['password_hash'] = password_hash($r['password'], PASSWORD_DEFAULT);
+            $r['password']      = Password::generate();
+            $r['password_hash'] = Password::hash($r['password']);
         }
         unset($r);
 
@@ -324,25 +321,4 @@ class StudentImport extends Model
         return $taken;
     }
 
-    // Grouped for legibility on a printed slip: K7M4-P2QX-9RTB.
-    // 12 characters from a 31-glyph alphabet is a little under 60 bits. The
-    // app has no password-change screen, so this is the credential the student
-    // keeps until an admin resets it, and it is sized for that rather than for
-    // a value they will replace on first sign-in.
-    public static function generatePassword(): string
-    {
-        $alphabet = self::PASSWORD_ALPHABET;
-        $max      = strlen($alphabet) - 1;
-        $groups   = [];
-
-        for ($g = 0; $g < self::PASSWORD_GROUPS; $g++) {
-            $chunk = '';
-            for ($i = 0; $i < self::PASSWORD_GROUP_LEN; $i++) {
-                $chunk .= $alphabet[random_int(0, $max)];
-            }
-            $groups[] = $chunk;
-        }
-
-        return implode('-', $groups);
-    }
 }

@@ -14,6 +14,7 @@
 <?php
 $page_title = 'Users';
 ob_start(); ?>
+            <a class="btn btn--quiet btn--sm" href="<?= BASE_URL ?>admin/resetClass">Reset a class</a>
             <a class="btn btn--quiet btn--sm" href="<?= BASE_URL ?>admin/importBatches">Import batches</a>
             <a class="btn btn--quiet btn--sm" href="<?= BASE_URL ?>admin/importStudents">Import students</a>
             <a class="btn btn--primary btn--sm" href="<?= BASE_URL ?>admin/createUser">Create user</a>
@@ -82,15 +83,27 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                         <?php endif; ?>
                     </td>
                     <td class="small nowrap"><?= htmlspecialchars($u['created_at']) ?></td>
-                    <td class="actions">
-                        <?php if ((int) $u['id'] !== (int) Auth::user()['id']): ?>
-                        <form method="POST" action="<?= BASE_URL ?>admin/toggleStatus/<?= (int) $u['id'] ?>">
+                    <td class="actions actions--links">
+                        <?php $isSelf = (int) $u['id'] === (int) Auth::user()['id']; ?>
+
+                        <form method="POST" action="<?= BASE_URL ?>admin/resetPassword/<?= (int) $u['id'] ?>"
+                              onsubmit="return confirm(<?= $isSelf
+                                  ? '\'Reset your OWN password?\n\nYou will need the new one to sign in again. It is shown once - write it down before leaving the page.\''
+                                  : '\'Reset the password for ' . htmlspecialchars(addslashes($u['full_name']), ENT_QUOTES) . '?\n\nTheir current password stops working immediately.\'' ?>);">
                             <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
-                            <button type="submit" class="btn btn--sm <?= $u['status'] === 'active' ? 'btn--danger-quiet' : 'btn--ok' ?>">
-                                <?= $u['status'] === 'active' ? 'Suspend' : 'Activate' ?>
-                            </button>
+                            <button type="submit" class="act-link">Reset password</button>
                         </form>
+
+                        <?php if (!$isSelf): ?>
+                            <span class="act-sep" aria-hidden="true">&middot;</span>
+                            <form method="POST" action="<?= BASE_URL ?>admin/toggleStatus/<?= (int) $u['id'] ?>">
+                                <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
+                                <button type="submit" class="act-link <?= $u['status'] === 'active' ? 'act-link--danger' : '' ?>">
+                                    <?= $u['status'] === 'active' ? 'Suspend' : 'Activate' ?>
+                                </button>
+                            </form>
                         <?php else: ?>
+                            <span class="act-sep" aria-hidden="true">&middot;</span>
                             <span class="muted small">(you)</span>
                         <?php endif; ?>
                     </td>

@@ -71,3 +71,10 @@ $home    = $links['dashboard'][0] ?? '';
 
   </div>
 </header>
+<?php
+// The nav loop above runs in the including view's scope, so $key, $path and
+// $label would otherwise leak into it and clobber a variable of the same name
+// that the controller had passed in. That is not hypothetical: it silently
+// replaced a class label on the credential slips page with the text of the
+// last nav link. page_head.php already cleans up after itself; so does this.
+unset($nav_current, $links, $current, $home, $key, $path, $label);
