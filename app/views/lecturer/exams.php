@@ -9,7 +9,7 @@
 <body>
 <?php $nav_current = 'dashboard'; require APP_ROOT . '/app/views/_partials/topbar.php'; ?>
 
-<main class="shell shell--narrow">
+<main class="shell shell--wide">
 
 <?php
 $page_title = 'Exams';
