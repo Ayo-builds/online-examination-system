@@ -595,6 +595,21 @@ check('the confirm view posts to the confirm route',
 check('the confirm view carries no class field for the browser to change',
     strpos($confirmHtml, 'name="class_id"') === false);
 
+// Nobody left to enrol, but the class is not empty - everyone in it is already
+// on the roll. A different branch from the empty class below: the screen still
+// renders its form, and it is the button that is unavailable rather than the
+// whole page that changes.
+$nothingToDo = render_view(APP_ROOT . '/app/views/admin/bulk_enroll_confirm.php', [
+    'course'  => $course,
+    'class'   => $classA,
+    'preview' => ['eligible' => 0, 'already' => 28, 'suspended' => 2],
+]);
+same('the nothing-to-do confirm view raised no diagnostics', [], test_diagnostics());
+check('with nobody to enrol the submit button is disabled',
+    preg_match('/<button type="submit"[^>]*\sdisabled/s', $nothingToDo) === 1);
+check('with nobody to enrol Cancel takes the primary styling',
+    preg_match('/<a class="btn btn--primary"[^>]*>\s*Cancel/s', $nothingToDo) === 1);
+
 $emptyConfirm = render_view(APP_ROOT . '/app/views/admin/bulk_enroll_confirm.php', [
     'course'  => $course,
     'class'   => $classA,
