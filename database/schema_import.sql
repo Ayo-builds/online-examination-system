@@ -141,6 +141,9 @@ CREATE TABLE exam_attempts (
     total_score DECIMAL(6,2) NULL,
     grading_status ENUM('pending','partial','complete') DEFAULT 'pending',
     is_flagged TINYINT(1) DEFAULT 0,
+    -- Answers the browser still had unsaved at submit time. Client-reported,
+    -- inert, and only ever written on a real submission. See migration 005.
+    unsaved_at_submit INT NOT NULL DEFAULT 0,
     UNIQUE KEY one_attempt (exam_id, student_id),
     FOREIGN KEY (exam_id) REFERENCES exams(id),
     FOREIGN KEY (student_id) REFERENCES users(id)

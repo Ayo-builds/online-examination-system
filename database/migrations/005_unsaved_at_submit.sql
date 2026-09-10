@@ -1,0 +1,34 @@
+-- ============================================================================
+-- 005. Record answers still unsaved when an attempt was submitted
+--
+-- Autosave can fail: on this deployment's LAN the power cuts, the network
+-- blips, and a save can be in flight when it happens. A failed save must never
+-- block a submission - that would turn a network fault into a zero - so the
+-- student submits regardless, and this column records how many answers the
+-- browser still had outstanding when they did.
+--
+--   mysql -u root exam_system < database/migrations/005_unsaved_at_submit.sql
+--
+-- MySQL does not roll DDL back, so take a dump first (OFFLINE-DEPLOYMENT.md,
+-- "Backups"). Fresh installs get this from database/schema.sql instead and
+-- must NOT run this file.
+-- ============================================================================
+
+-- A count, not a flag: "3 answers outstanding" tells the school more than
+-- "something went wrong", and 0 - the overwhelmingly normal case - is the
+-- column's own default, so no backfill is needed for existing attempts.
+--
+-- This number is REPORTED BY THE BROWSER. It is a diagnostic for the school,
+-- not evidence: a tampered client could send any value. That is acceptable
+-- because the number is inert. Nothing reads it to compute, alter or withhold
+-- a score; it only ever adds information to a paper a human is already
+-- looking at. The failure it exists to make visible - a student saying "it
+-- didn't save my answers" with nothing on record either way - is worse than
+-- the worst thing a false value here can do.
+--
+-- It is written ONLY on a real submission. An attempt whose power cut and was
+-- never resumed does not submit at all, so it never reaches this column and
+-- stays 0. Finding those is a separate job (expired attempts are still
+-- 'in_progress' and invisible to the grading queue) and is not this step.
+ALTER TABLE exam_attempts
+    ADD COLUMN unsaved_at_submit INT NOT NULL DEFAULT 0 AFTER is_flagged;

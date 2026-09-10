@@ -37,6 +37,23 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
         </div>
     </div>
 
+    <?php /* The student's browser still had answers in flight when they
+             submitted - typically a power cut or a network drop mid-paper.
+             It changes nothing about the marking, and the marks below are
+             whatever did reach the server; this exists so the school learns
+             it from the record rather than from the student afterwards.
+             Reported by the browser, so treat it as a prompt to look, not as
+             proof. See migration 005. */ ?>
+    <?php if ((int) ($attempt['unsaved_at_submit'] ?? 0) > 0): ?>
+    <div class="alert alert--warn stack-md">
+        <strong>Submitted with <?= (int) $attempt['unsaved_at_submit'] ?>
+        answer(s) still unsaved.</strong>
+        This paper was submitted while the browser was still trying to save.
+        Answers that never reached the server are not shown below and were not
+        marked. Worth checking with the candidate before releasing the result.
+    </div>
+    <?php endif; ?>
+
     <?php foreach ($answers as $ans): ?>
     <div class="question-card stack-md">
         <div class="question-card__meta">

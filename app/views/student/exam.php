@@ -34,9 +34,15 @@
 
             <div class="quiz__panel">
 
+                <?php /* Answers the browser still has outstanding at submit time.
+                         Kept current by the save queue. It never blocks the
+                         submission: a failed save must not become a zero. */ ?>
+                <div id="save-banner" class="savebar" role="status" aria-live="polite" hidden></div>
+
                 <form id="exam-form" method="POST"
                       action="<?= BASE_URL ?>student/submitExam/<?= (int) $attempt['id'] ?>">
                     <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
+                    <input type="hidden" name="unsaved_count" id="unsaved-count" value="0">
 
                     <div id="quiz-questions">
 
@@ -44,12 +50,14 @@
 
                     <?php foreach ($questions as $q): ?>
                     <?php $qid = (int) $q['question_id']; $num = (int) $q['display_order']; ?>
-                    <div class="question-card" id="q<?= $num ?>">
+                    <div class="question-card" id="q<?= $num ?>"
+                         data-question-id="<?= $qid ?>" data-qnum="<?= $num ?>">
 
-                        <?php /* Must remain the FIRST child div: flashSaved() appends the saved tag here. */ ?>
                         <div class="question-card__meta">
                             <p class="qmeta__num">Question <b><?= $num ?></b></p>
-                            <p class="qmeta__state">Not yet answered</p>
+                            <?php /* Written ONLY from what the server said about this
+                                     answer. See public/assets/js/save-status.js. */ ?>
+                            <p class="qmeta__state qmeta__state--clean">Not yet answered</p>
                             <p class="qmeta__marks">Marked out of <?= htmlspecialchars($q['marks']) ?></p>
                             <button type="button" class="qmeta__flag"
                                     data-flag="<?= $num ?>" aria-pressed="false">
@@ -151,13 +159,30 @@
         </div>
     </main>
 
-   <script>
+   <script type="module">
+        import { createSaveQueue } from '<?= BASE_URL ?>assets/js/save-queue.js';
+        import { renderQuestionState, renderBanner, LABELS } from '<?= BASE_URL ?>assets/js/save-status.js';
+
         const remaining = <?= (int) $remaining ?>;
         const deadline  = Date.now() + remaining * 1000;
         const timerEl   = document.getElementById('timer');
         const form      = document.getElementById('exam-form');
-        const csrf      = form.querySelector('input[name="csrf_token"]').value;
+        const bannerEl  = document.getElementById('save-banner');
+        const countEl   = document.getElementById('unsaved-count');
         const saveUrl   = '<?= BASE_URL ?>student/saveAnswer/<?= (int) $attempt['id'] ?>';
+        let   csrf      = form.querySelector('input[name="csrf_token"]').value;
+
+        // Answers already on the server when this page was rendered. On a
+        // resume these came back out of the database, so they are genuinely
+        // saved and may honestly say so before anything is typed.
+        const initialSaved = new Set(<?= json_encode(array_values(array_map(
+            fn($q) => (int) $q['question_id'],
+            array_filter(
+                $questions,
+                fn($q) => $q['selected_option_id'] !== null
+                       || ($q['essay_text'] !== null && trim($q['essay_text']) !== '')
+            )
+        ))) ?>);
 
         // ---- Timer ----
         function tick() {
@@ -172,78 +197,142 @@
         setInterval(tick, 1000);
 
         // ---- Auto-save ----
-        async function saveAnswer(questionId, optionId, essayText) {
-            const body = new URLSearchParams();
-            body.append('csrf_token', csrf);
-            body.append('question_id', questionId);
-            if (optionId !== null)  body.append('option_id', optionId);
-            if (essayText !== null) body.append('essay_text', essayText);
+        //
+        // The queue owns retries, the debounce ceiling and the per-question
+        // state. This file only carries values into it and paints what comes
+        // back out. Nothing below may say an answer is saved on its own
+        // authority; only a 200 from the server produces that word.
 
-            try {
-                const res = await fetch(saveUrl, { method: 'POST', body });
-                const data = await res.json();
-                if (data.ok) {
-                    flashSaved(questionId);
-                } else if (data.error === 'closed') {
-                    form.submit();   // deadline passed server-side, so submit now
-                }
-            } catch (e) {
-                // Network blip. The answer stays in the DOM; next change retries.
-            }
+        // The queue keys by question id, but a student thinks in the numbers
+        // printed on the paper, so the banner has to translate.
+        const numById = new Map();
+        document.querySelectorAll('.question-card').forEach(card => {
+            numById.set(Number(card.dataset.questionId), Number(card.dataset.qnum));
+        });
+
+        let sessionExpired = false;
+
+        async function transport(payload, opts) {
+            const body = new URLSearchParams();
+            Object.keys(payload).forEach(k => {
+                if (payload[k] !== null && payload[k] !== undefined) body.append(k, payload[k]);
+            });
+
+            // keepalive is set by flush() on blur and visibilitychange, so the
+            // request can outlive a page that is about to stop running.
+            const res = await fetch(saveUrl, {
+                method: 'POST',
+                body,
+                keepalive: !!(opts && opts.keepalive),
+            });
+
+            // A dead session can be answered by a redirect to the login page,
+            // which is HTML, not JSON. Treat an unparseable body as no body
+            // rather than letting the throw become a silent network failure.
+            let parsed = null;
+            try { parsed = await res.json(); } catch (e) { parsed = null; }
+
+            return { status: res.status, body: parsed };
         }
 
-        function flashSaved(questionId) {
-            const card = document.querySelector('[data-question="' + questionId + '"]')
-                             ?.closest('.question-card');
-            if (!card) return;
-            let tag = card.querySelector('.saved-tag');
-            if (!tag) {
-                tag = document.createElement('span');
-                tag.className = 'saved-tag';
-                card.querySelector('div').appendChild(tag);
-            }
-            tag.textContent = '✓ saved';
+        const queue = createSaveQueue({
+            transport,
+            onChange: paint,
+            onClosed: () => form.submit(),   // server deadline passed
+            onCsrf: () => { sessionExpired = true; paint(); },
+        });
+
+        // What a question's status line should say right now: the queue's view
+        // once it has one, and otherwise whether the server had an answer when
+        // this page was built.
+        function displayState(qid) {
+            const s = queue.stateOf(qid);
+            if (s !== queue.STATES.CLEAN) return s;
+            return initialSaved.has(qid) ? queue.STATES.SAVED : queue.STATES.CLEAN;
+        }
+
+        function paint() {
+            document.querySelectorAll('.question-card').forEach(card => {
+                const qid   = Number(card.dataset.questionId);
+                const num   = card.dataset.qnum;
+                const state = displayState(qid);
+
+                renderQuestionState(card.querySelector('.qmeta__state'), state);
+
+                const box = document.querySelector('[data-nav="' + num + '"]');
+                if (box) {
+                    box.classList.toggle('qnav__box--answered', state === queue.STATES.SAVED);
+                    box.classList.toggle('qnav__box--unsaved',  state === queue.STATES.UNSAVED);
+                }
+            });
+
+            const outstanding = queue.unsavedQuestions().map(qid => numById.get(qid) || qid);
+
+            renderBanner(bannerEl, outstanding, { sessionExpired });
+            countEl.value = String(outstanding.length);
+
+            if (sessionExpired) ensureRetryButton();
+        }
+
+        // Offered only when the session has died, because that is the one
+        // failure the queue cannot retry its way out of on its own.
+        function ensureRetryButton() {
+            if (bannerEl.querySelector('.js-retry')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'qbtn qbtn--ghost js-retry';
+            btn.textContent = 'Retry';
+            btn.addEventListener('click', async () => {
+                // Pick up whatever token the restored session now issues.
+                try {
+                    const res = await fetch('<?= BASE_URL ?>student/sessionToken', { cache: 'no-store' });
+                    const data = await res.json();
+                    if (data && data.ok && data.csrf_token) {
+                        csrf = data.csrf_token;
+                        form.querySelector('input[name="csrf_token"]').value = csrf;
+                        sessionExpired = false;
+                        queue.resumeAfterCsrf(csrf);
+                        paint();
+                    }
+                } catch (e) {
+                    // Still down. The banner stays up and nothing is lost.
+                }
+            });
+            bannerEl.appendChild(btn);
         }
 
         // MCQ radios: save immediately on change
         document.querySelectorAll('input[type=radio][data-question]').forEach(r => {
             r.addEventListener('change', () => {
-                saveAnswer(r.dataset.question, r.value, null);
-                markAnswered();
+                queue.saveNow(Number(r.dataset.question), {
+                    csrf_token:  csrf,
+                    question_id: r.dataset.question,
+                    option_id:   r.value,
+                });
             });
         });
 
-        // Essays: debounce, saving ~1s after typing stops
+        // Essays: debounced, with the queue's ceiling behind it so steady
+        // typing cannot outrun the save the way it used to.
         document.querySelectorAll('textarea[data-question]').forEach(t => {
-            let timer = null;
             t.addEventListener('input', () => {
-                markAnswered();
-                clearTimeout(timer);
-                timer = setTimeout(() => {
-                    saveAnswer(t.dataset.question, null, t.value);
-                }, 1000);
+                queue.saveDebounced(Number(t.dataset.question), {
+                    csrf_token:  csrf,
+                    question_id: t.dataset.question,
+                    essay_text:  t.value,
+                });
             });
         });
 
-        // ---------- Navigation block state ----------
-        // Presentation only. Nothing here is sent to the server, and nothing here
-        // decides a grade; the server remains the sole authority on both.
-        function markAnswered() {
-            document.querySelectorAll('.question-card').forEach(card => {
-                const num  = card.id.replace('q', '');
-                const box  = document.querySelector('[data-nav="' + num + '"]');
-                const meta = card.querySelector('.qmeta__state');
-                if (!box) return;
+        // The page may be about to stop running JavaScript: the student has
+        // alt-tabbed, or the machine is going down. Send what is outstanding
+        // now rather than waiting out a debounce that may never finish.
+        window.addEventListener('blur', () => queue.flush());
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) queue.flush();
+        });
 
-                const radio = card.querySelector('input[type=radio]:checked');
-                const essay = card.querySelector('textarea');
-                const done  = !!radio || (essay && essay.value.trim().length > 0);
-
-                box.classList.toggle('qnav__box--answered', done);
-                if (meta) meta.textContent = done ? 'Answer saved' : 'Not yet answered';
-            });
-        }
-        markAnswered();
+        paint();
 
         // ---------- Summary of attempt ----------
         // A view over the same form, not a separate page. Hiding the questions
@@ -252,20 +341,20 @@
         const summaryEl     = document.getElementById('quiz-summary');
         const summaryRows   = document.getElementById('summary-rows');
 
+        // The last screen before submitting, so it above all must not overstate
+        // what is safe. It reads the same state the status lines do.
         function buildSummary() {
             summaryRows.textContent = '';
             document.querySelectorAll('.question-card').forEach(card => {
-                const num   = card.id.replace('q', '');
-                const radio = card.querySelector('input[type=radio]:checked');
-                const essay = card.querySelector('textarea');
-                const done  = !!radio || (essay && essay.value.trim().length > 0);
+                const state = displayState(Number(card.dataset.questionId));
 
                 const tr = document.createElement('tr');
                 const q  = document.createElement('td');
                 const s  = document.createElement('td');
                 q.className = 'sum-q';
-                q.textContent = num;
-                s.textContent = done ? 'Answer saved' : 'Not yet answered';
+                q.textContent = card.dataset.qnum;
+                s.textContent = LABELS[state];
+                if (state === queue.STATES.UNSAVED) s.className = 'sum-unsaved';
                 tr.append(q, s);
                 summaryRows.appendChild(tr);
             });

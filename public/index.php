@@ -9,6 +9,24 @@ declare(strict_types=1);
 ini_set('session.use_strict_mode', '1');
 ini_set('session.use_only_cookies', '1');   // never accept an id from the URL
 
+// ---- Session lifetime (must also run BEFORE session_start) ----
+//
+// PHP's 24-minute default is shorter than an exam. A candidate who reads and
+// thinks for 25 minutes without touching an answer lost their session, and
+// every autosave after that failed CSRF verification - silently, because the
+// old client swallowed anything that was not a 'closed' error. They kept
+// typing into a void.
+//
+// Four hours clears the longest paper (about two) with room for a power cut
+// and a resume in the middle of it. This only relaxes garbage collection; it
+// does not keep anyone signed in past sign-out, and the cookie itself stays a
+// browser-session cookie (lifetime 0), which is the safer default.
+//
+// Hardcoded rather than read from config: session_start() runs below, and the
+// config file is not loaded until further down this same file. Reordering the
+// bootstrap for one constant is not worth the risk.
+ini_set('session.gc_maxlifetime', '14400');
+
 // The Secure flag is set only when the request actually arrived over TLS.
 // Hardcoding it true would silently break sign-in over plain HTTP, which is
 // how this app runs on a local XAMPP box. Behind a TLS-terminating proxy

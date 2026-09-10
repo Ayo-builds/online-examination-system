@@ -173,19 +173,41 @@ class Attempt extends Model
         );
     }
 
+    // How many questions are on this attempt's paper. Used to clamp the
+    // client-reported unsaved count: it cannot exceed the paper itself.
+    public function questionCount(int $attemptId): int
+    {
+        $row = $this->query(
+            "SELECT COUNT(*) AS n FROM attempt_questions WHERE attempt_id = ?",
+            [$attemptId]
+        )->fetch();
+
+        return (int) $row['n'];
+    }
+
     // Grade all MCQs against frozen correct answers; flag essays for manual grading.
     // Returns ['auto_score' => float, 'has_essays' => bool].
-    public function submitAndGrade(int $attemptId, string $finalStatus = 'submitted'): array
-    {
+    //
+    // $unsavedAtSubmit is how many answers the browser still had outstanding.
+    // It is recorded, never acted on: a failed save must not cost a student
+    // marks, so it changes nothing about grading and only tells the school
+    // afterwards that this paper was submitted with saves in flight.
+    public function submitAndGrade(
+        int $attemptId,
+        string $finalStatus = 'submitted',
+        int $unsavedAtSubmit = 0
+    ): array {
         try {
             $this->db->beginTransaction();
 
-            // Lock the attempt to in_progress → target status (idempotent guard)
+            // Lock the attempt to in_progress → target status (idempotent guard).
+            // The unsaved count rides along in the same statement, so a paper
+            // can never be marked submitted without the record of how it was.
             $this->query(
                 "UPDATE exam_attempts
-                 SET status = ?, submitted_at = NOW()
+                 SET status = ?, submitted_at = NOW(), unsaved_at_submit = ?
                  WHERE id = ? AND status = 'in_progress'",
-                [$finalStatus, $attemptId]
+                [$finalStatus, $unsavedAtSubmit, $attemptId]
             );
 
             // Every question on this paper, with its type, marks, correct option,

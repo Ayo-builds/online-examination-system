@@ -1126,9 +1126,9 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
 /* ---------- Exam runner --------------------------------------------------
    The highest-stakes screen in the app. Chrome stays quiet so the paper and
    the clock carry it; nothing here competes with the question text.
-   IDs and class hooks (#exam-bar, #timer, #fs-btn, .question-card,
-   .saved-tag) are consumed by the inline script in student/exam.php and must
-   keep their names.                                                        */
+   IDs and class hooks (#exam-bar, #timer, #fs-btn, #save-banner,
+   .question-card, .qmeta__state) are consumed by the module in
+   student/exam.php and must keep their names.                                                        */
 
 .exam-shell { max-width: 48rem; margin-inline: auto; padding: 1.25rem var(--gutter) 5rem; }
 
@@ -1204,8 +1204,6 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   margin-top: 0.85rem;
 }
 
-/* The script appends .saved-tag into the card's FIRST child div, so this row
-   must stay the first element inside .question-card. */
 .question-card__meta {
   display: flex;
   justify-content: space-between;
@@ -1226,12 +1224,6 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   color: var(--graphite);
 }
 
-.saved-tag {
-  font-family: var(--mono);
-  font-size: var(--t-micro);
-  letter-spacing: 0.08em;
-  color: var(--ok);
-}
 
 .opts { margin-top: 0.9rem; display: flex; flex-direction: column; gap: 0.4rem; }
 
@@ -1514,7 +1506,7 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
      --activityassessment  : #f90086  (the quiz activity icon)
 
    Everything is scoped under .quiz-page. The app already defines
-   .question-card, .question-card__meta, .opt and .saved-tag for the older
+   .question-card, .question-card__meta and .opt for the older
    runner at the same specificity, so an unscoped rule here would win only on
    the properties it declares and let font-family, text-transform, border and
    background leak through. The prefix plus the explicit resets close that off.
@@ -1603,7 +1595,6 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   .quiz-page .question-card { grid-template-columns: 8.5rem minmax(0, 1fr); }
 }
 
-/* FIRST child div. flashSaved() appends .saved-tag here, so it must stay first. */
 .quiz-page .question-card__meta {
   display: flex; flex-direction: column; gap: 0.45rem;
   justify-content: flex-start;
@@ -1631,10 +1622,6 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
 }
 .quiz-page .qmeta__flag svg { width: 0.85rem; height: 0.85rem; flex: none; }
 .quiz-page .qmeta__flag[aria-pressed="true"] { color: #b3261e; font-weight: 600; }
-.quiz-page .saved-tag {
-  font-family: inherit; font-size: 0.75rem; font-weight: 600;
-  letter-spacing: normal; color: #1f7a6b; margin: 0;
-}
 
 .quiz-page .question-card__body {
   background: var(--q-panel);
@@ -2025,3 +2012,41 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
 .confirm-counts__list li {
   color: var(--ink);
 }
+
+/* ---------- Save state ----------------------------------------------------
+   The words a candidate reads about whether their work is safe. Written only
+   from what the server said (public/assets/js/save-status.js), so the unsaved
+   styling has to be impossible to miss and the saved styling has to be quiet
+   enough that it is not the thing they are staring at.                     */
+
+.quiz-page .qmeta__state--clean  { color: var(--q-muted); }
+.quiz-page .qmeta__state--saving { color: var(--q-muted); font-style: italic; }
+.quiz-page .qmeta__state--saved  { color: #1f7a6b; font-weight: 600; }
+.quiz-page .qmeta__state--unsaved {
+  color: #b3261e; font-weight: 700; letter-spacing: 0.02em;
+}
+
+/* Sits above the paper, not in the flow of it, so it cannot be scrolled past
+   while answers are outstanding. */
+.quiz-page .savebar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  margin: 0 0 1rem;
+  padding: 0.7rem 1rem;
+  border-radius: var(--q-radius-xs);
+  font-size: 0.875rem; line-height: 1.5;
+}
+.quiz-page .savebar--error {
+  background: #fdecea; border: 1px solid #f5c2bd; color: #8c1d18;
+  font-weight: 600;
+}
+.quiz-page .savebar .js-retry { margin-left: auto; }
+
+/* An outstanding question in the navigation grid. Distinct from --answered:
+   the point is that this one is NOT safe yet. */
+.quiz-page .qnav__box--unsaved {
+  background: #fdecea; color: #8c1d18; border-color: #f5c2bd; font-weight: 700;
+}
+.quiz-page .qnav__box--unsaved:hover { background: #f9d8d4; color: #8c1d18; }
+
+.quiz-page .sum-unsaved { color: #b3261e; font-weight: 700; }

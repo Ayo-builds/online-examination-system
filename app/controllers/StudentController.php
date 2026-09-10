@@ -192,6 +192,23 @@ class StudentController extends Controller
     }
 
 
+    // GET /student/sessionToken. AJAX, returns JSON
+    //
+    // Only reachable with a live student session, because the constructor's
+    // RoleGuard redirects anyone else to the login page. That is exactly the
+    // property that makes it useful: after a session dies mid-exam and the
+    // student signs in again in another tab, the exam tab still holds the dead
+    // token and every retry would fail forever. This hands it the live one.
+    //
+    // It discloses nothing to an attacker. Reading the response requires the
+    // session cookie AND a same-origin request; a cross-origin script is
+    // refused the body by the browser, and CSRF itself is unaffected because
+    // a forged POST still cannot read this.
+    public function sessionToken(): void
+    {
+        $this->json(['ok' => true, 'csrf_token' => Csrf::token()]);
+    }
+
     // POST /student/logActivity/{attemptId}. AJAX, returns JSON
     public function logActivity(string $attemptId = ''): void
     {
@@ -265,12 +282,19 @@ class StudentController extends Controller
             exit('404. Attempt not found.');
         }
 
+        // How many answers the browser still had outstanding. Reported by the
+        // client, so it is clamped to the size of this paper and treated as a
+        // diagnostic for the school rather than as evidence: nothing reads it
+        // to compute or withhold a score. See migration 005.
+        $unsaved = max(0, (int) ($_POST['unsaved_count'] ?? 0));
+        $unsaved = min($unsaved, $attemptModel->questionCount($attemptId));
+
         // Only an in-progress attempt can be submitted
         if ($attempt['status'] === 'in_progress') {
             // Deadline passed? Grade as auto_submitted; else a normal submit.
             $status = strtotime($attempt['deadline_at']) <= time()
                     ? 'auto_submitted' : 'submitted';
-            $attemptModel->submitAndGrade($attemptId, $status);
+            $attemptModel->submitAndGrade($attemptId, $status, $unsaved);
         }
 
         $this->redirect('student/result/' . $attemptId);
