@@ -145,7 +145,12 @@ CREATE TABLE exam_attempts (
     -- Answers the browser still had unsaved at submit time. Client-reported,
     -- inert, and only ever written on a real submission. See migration 005.
     unsaved_at_submit INT NOT NULL DEFAULT 0,
+    -- Set when no submission ever arrived and the server closed the paper
+    -- after its deadline; NULL when the candidate's browser submitted it.
+    -- See migration 006.
+    closed_by_system_at DATETIME NULL,
     UNIQUE KEY one_attempt (exam_id, student_id),
+    INDEX idx_attempts_sweep (status, deadline_at),
     FOREIGN KEY (exam_id) REFERENCES exams(id),
     FOREIGN KEY (student_id) REFERENCES users(id)
 );

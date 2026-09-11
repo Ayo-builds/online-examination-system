@@ -829,6 +829,10 @@ class AdminController extends Controller
     }
     public function analytics(): void
     {
+        // The one admin page that reads attempt status. Close abandoned
+        // attempts first, or they count as live attempts forever.
+        (new Attempt())->sweepAbandoned();
+
         $analytics = new Analytics();
 
         $this->view('admin/analytics', [

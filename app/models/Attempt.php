@@ -3,6 +3,15 @@ class Attempt extends Model
 {
     protected string $table = 'exam_attempts';
 
+    // How long past its deadline an attempt is left for its own student to
+    // close before the sweep does it for them. The student's submit is the only
+    // thing that records unsaved_at_submit, and the page's timer fires that
+    // submit AT the deadline: a sweep at deadline+0 would race it and erase the
+    // record. Five minutes also covers a submit re-sent after a short network
+    // drop. Waiting costs nothing, because saveAnswer refuses every write past
+    // deadline_at - the paper's contents are frozen however late the sweep runs.
+    public const SWEEP_GRACE_MINUTES = 5;
+
     public function findByExamAndStudent(int $examId, int $studentId): ?array
     {
         $row = $this->query(
@@ -141,11 +150,64 @@ class Attempt extends Model
         return $rows;
     }
 
-    // Mark an attempt auto-submitted (deadline reached). Grading happens in Step 35.
-  public function autoSubmit(int $attemptId): void
+    // Close an attempt on the server's authority: its deadline has passed and
+    // no submission came from the candidate's browser. Reached two ways - the
+    // candidate reopening the paper late (StudentController::exam) and the
+    // sweep below - and both are the same event, so both are marked the same.
+    //
+    // submitted_at is the deadline, not now. saveAnswer refuses everything
+    // after deadline_at, so that is when the paper's contents actually froze,
+    // and a paper swept on Monday must not tell the student it was completed
+    // on Monday. When the server really closed it goes in closed_by_system_at,
+    // which is also what tells the lecturer that nobody pressed Submit - and so
+    // that unsaved_at_submit = 0 on this row means unknown, not none.
+    //
+    // Returns false when something else closed the attempt first.
+    public function autoSubmit(int $attemptId): bool
     {
-        // Auto-submit = grade with the auto_submitted status
-        $this->submitAndGrade($attemptId, 'auto_submitted');
+        return $this->claimAndGrade(
+            "UPDATE exam_attempts
+             SET status = 'auto_submitted', submitted_at = deadline_at,
+                 closed_by_system_at = NOW()
+             WHERE id = ? AND status = 'in_progress'",
+            [$attemptId],
+            $attemptId
+        ) !== null;
+    }
+
+    // Close every attempt whose candidate never came back. Returns how many.
+    //
+    // Otherwise an attempt is closed only by its own student. One who never
+    // returns - a power cut, a walk-out - leaves it in_progress for good: never
+    // graded, missing from the grading queue and from every analytics query,
+    // and counted as a live attempt forever. There is no cron on a school LAN,
+    // so staff page loads run this instead (LecturerController's constructor,
+    // AdminController::analytics).
+    //
+    // System-wide, not per lecturer: closing an expired attempt is not a
+    // permission decision, it is exactly what the student's own return would
+    // do. Each attempt is its own transaction, and one that fails is logged and
+    // skipped - the sweep must never be the reason a lecturer's page is down.
+    public function sweepAbandoned(): int
+    {
+        $ids = $this->query(
+            "SELECT id FROM exam_attempts
+             WHERE status = 'in_progress'
+               AND deadline_at < NOW() - INTERVAL " . self::SWEEP_GRACE_MINUTES . " MINUTE"
+        )->fetchAll(PDO::FETCH_COLUMN);
+
+        $closed = 0;
+        foreach ($ids as $id) {
+            try {
+                if ($this->autoSubmit((int) $id)) {
+                    $closed++;
+                }
+            } catch (Throwable $e) {
+                error_log('Attempt::sweepAbandoned: attempt ' . (int) $id . ': ' . $e->getMessage());
+            }
+        }
+
+        return $closed;
     }
 
     // Is this question part of this attempt's frozen paper?
@@ -186,7 +248,8 @@ class Attempt extends Model
     }
 
     // Grade all MCQs against frozen correct answers; flag essays for manual grading.
-    // Returns ['auto_score' => float, 'has_essays' => bool].
+    // Returns ['auto_score' => float, 'has_essays' => bool], or null when the
+    // attempt had already been closed by someone else and nothing was done.
     //
     // $unsavedAtSubmit is how many answers the browser still had outstanding.
     // It is recorded, never acted on: a failed save must not cost a student
@@ -196,19 +259,36 @@ class Attempt extends Model
         int $attemptId,
         string $finalStatus = 'submitted',
         int $unsavedAtSubmit = 0
-    ): array {
+    ): ?array {
+        // The unsaved count rides along in the claim itself, so a paper can
+        // never be marked submitted without the record of how it was.
+        return $this->claimAndGrade(
+            "UPDATE exam_attempts
+             SET status = ?, submitted_at = NOW(), unsaved_at_submit = ?
+             WHERE id = ? AND status = 'in_progress'",
+            [$finalStatus, $unsavedAtSubmit, $attemptId],
+            $attemptId
+        );
+    }
+
+    // Run $claimSql - an UPDATE that moves this attempt out of in_progress -
+    // and grade the attempt, in one transaction. Returns null without grading
+    // if the claim matched nothing.
+    private function claimAndGrade(string $claimSql, array $params, int $attemptId): ?array
+    {
         try {
             $this->db->beginTransaction();
 
-            // Lock the attempt to in_progress → target status (idempotent guard).
-            // The unsaved count rides along in the same statement, so a paper
-            // can never be marked submitted without the record of how it was.
-            $this->query(
-                "UPDATE exam_attempts
-                 SET status = ?, submitted_at = NOW(), unsaved_at_submit = ?
-                 WHERE id = ? AND status = 'in_progress'",
-                [$finalStatus, $unsavedAtSubmit, $attemptId]
-            );
+            // The claim closes the attempt for exactly one caller. A student's
+            // late submit, their return to the paper and the sweep can all reach
+            // one attempt at the same moment; InnoDB serialises the UPDATEs and
+            // every one after the first matches no row. The loser must stop
+            // here: regrading a paper someone else closed writes NULL over any
+            // essay mark a lecturer has awarded since.
+            if ($this->query($claimSql, $params)->rowCount() === 0) {
+                $this->db->commit();
+                return null;
+            }
 
             // Every question on this paper, with its type, marks, correct option,
             // and the student's saved answer (if any)
@@ -282,7 +362,7 @@ class Attempt extends Model
     {
         return $this->query(
             "SELECT a.id, a.status, a.total_score, a.grading_status, a.is_flagged,
-                    a.submitted_at,
+                    a.submitted_at, a.closed_by_system_at,
                     u.full_name AS student_name, u.admission_no,
                     cl.year_group, cl.arm,
                     e.title AS exam_title, e.pass_mark,

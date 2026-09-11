@@ -14,7 +14,7 @@
 <?php
 $page_title = htmlspecialchars($attempt['student_name']);
 $page_lead_class = 'small';
-ob_start(); ?><?php $student = $attempt; require APP_ROOT . '/app/views/_partials/student_identity.php'; ?> &middot; <?= htmlspecialchars($attempt['course_code']) ?> / <?= htmlspecialchars($attempt['exam_title']) ?> &middot; submitted <?= htmlspecialchars($attempt['submitted_at']) ?><?php $page_lead = ob_get_clean();
+ob_start(); ?><?php $student = $attempt; require APP_ROOT . '/app/views/_partials/student_identity.php'; ?> &middot; <?= htmlspecialchars($attempt['course_code']) ?> / <?= htmlspecialchars($attempt['exam_title']) ?> &middot; <?= $attempt['closed_by_system_at'] !== null ? 'not submitted, closed at deadline' : 'submitted' ?> <?= htmlspecialchars($attempt['submitted_at']) ?><?php $page_lead = ob_get_clean();
 require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <div class="grid grid--2">
@@ -36,6 +36,23 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
             </span>
         </div>
     </div>
+
+    <?php /* No submission ever arrived: the candidate never came back and the
+             system closed the paper after its deadline. Nothing reported what
+             was on their screen, so unsaved_at_submit is 0 here because nobody
+             was there to count, not because nothing was lost. See
+             Attempt::autoSubmit() and migration 006. */ ?>
+    <?php if ($attempt['closed_by_system_at'] !== null): ?>
+    <div class="alert alert--warn stack-md">
+        <strong>No submission was received from this candidate.</strong>
+        The deadline passed at <?= htmlspecialchars($attempt['deadline_at']) ?>
+        without a submission, and the system closed the paper at
+        <?= htmlspecialchars($attempt['closed_by_system_at']) ?>. Only answers
+        that reached the server before the deadline are shown and marked.
+        Whether anything else was on the candidate's screen is unknown. Worth
+        checking with the candidate before releasing the result.
+    </div>
+    <?php endif; ?>
 
     <?php /* The student's browser still had answers in flight when they
              submitted - typically a power cut or a network drop mid-paper.

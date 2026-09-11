@@ -13,7 +13,7 @@
 
 <?php
 $page_title = 'Grading queue';
-$page_lead = 'Submitted attempts awaiting marking or review. Flagged attempts carry an activity log.';
+$page_lead = 'Finished attempts awaiting marking or review, including papers the system closed after their deadline because the candidate never submitted. Flagged attempts carry an activity log.';
 require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (empty($attempts)): ?>
@@ -61,7 +61,16 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                             <span class="muted">&mdash;</span>
                         <?php endif; ?>
                     </td>
-                    <td class="small nowrap"><?= htmlspecialchars($a['submitted_at']) ?></td>
+                    <td class="small nowrap">
+                        <?= htmlspecialchars($a['submitted_at']) ?>
+                        <?php /* Nobody pressed Submit: the deadline passed and the
+                                 system closed the paper. The time above is the
+                                 deadline. See Attempt::autoSubmit(). */ ?>
+                        <?php if ($a['closed_by_system_at'] !== null): ?>
+                            <br><span class="tag tag--warn"
+                                      title="Closed by the system at <?= htmlspecialchars($a['closed_by_system_at']) ?>">Not submitted</span>
+                        <?php endif; ?>
+                    </td>
                     <td class="actions">
                         <a href="<?= BASE_URL ?>lecturer/gradeAttempt/<?= (int) $a['id'] ?>">
                             <?= $a['grading_status'] === 'partial' ? 'Grade' : 'Review' ?>

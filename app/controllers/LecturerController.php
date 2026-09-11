@@ -4,6 +4,12 @@ class LecturerController extends Controller
     public function __construct()
     {
         RoleGuard::require(['lecturer']);
+
+        // No cron on a school LAN: attempts whose student never came back are
+        // closed here, before any page below can leave them out. Every lecturer
+        // page reads attempt state, so every one runs it. See
+        // Attempt::sweepAbandoned().
+        (new Attempt())->sweepAbandoned();
     }
 
   public function dashboard(): void
