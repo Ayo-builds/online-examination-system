@@ -65,48 +65,11 @@ $host = '127.0.0.1';
 $port = 8099;
 $base = "http://$host:$port/";
 
+// Refuses to run if anything already holds the port, then starts its own
+// server and stops it on every way out. See test_start_server().
+test_start_server($host, $port);
+
 test_reset_database();
-
-$descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-$server = proc_open(
-    sprintf(
-        '%s -S %s:%d -t public %s',
-        escapeshellarg(PHP_BINARY),
-        $host,
-        $port,
-        escapeshellarg(APP_ROOT . '/tests/router.php')
-    ),
-    $descriptors,
-    $pipes,
-    APP_ROOT,
-    ['EXAM_CONFIG' => 'config/config.test.php']
-);
-
-if (!is_resource($server)) {
-    fwrite(STDERR, "Could not start the built-in server.\n");
-    exit(1);
-}
-
-register_shutdown_function(static function () use ($server, $pipes): void {
-    foreach ($pipes as $p) {
-        if (is_resource($p)) fclose($p);
-    }
-    proc_terminate($server);
-    proc_close($server);
-});
-
-// Wait for it to accept connections rather than sleeping a fixed amount.
-$up = false;
-for ($i = 0; $i < 100; $i++) {
-    $sock = @fsockopen($host, $port, $errno, $errstr, 0.2);
-    if ($sock) { fclose($sock); $up = true; break; }
-    usleep(100000);
-}
-
-if (!$up) {
-    fwrite(STDERR, "Server did not come up on $host:$port.\n");
-    exit(1);
-}
 
 // ---- A cookie-carrying HTTP client ----------------------------------------
 

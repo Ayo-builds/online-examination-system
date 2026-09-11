@@ -95,4 +95,98 @@ function test_reset_database(): void
         . escapeshellarg(APP_ROOT . '/database/schema_import.sql'));
 }
 
+/**
+ * Serve the real app through PHP's built-in server on $host:$port for the
+ * rest of this script, and stop it on every way out.
+ *
+ * It refuses to share the port. A process already listening there was not
+ * started by this run, so its docroot, config and database are unknown, and a
+ * suite that quietly tests it proves nothing. That is not hypothetical: from
+ * 9 to 11 Sep 2026 tests/autosave_test.php passed against a php -S left
+ * running by hand, because its own server never started.
+ *
+ * Two Windows traps, both hit in this repository:
+ *
+ *  - The command is an ARRAY, so php.exe is started directly. A command
+ *    string goes through cmd.exe; proc_terminate() then kills cmd.exe and
+ *    php.exe lives on as an orphan still holding the port.
+ *
+ *  - The environment is the inherited one PLUS EXAM_CONFIG. An array passed
+ *    here replaces the child's whole environment, and a Windows child without
+ *    SystemRoot cannot start Winsock: "Failed to listen ... (reason: ?)".
+ *
+ * The shutdown function runs on the normal end, on exit() after a failed
+ * assertion, on an uncaught exception and on a fatal error. It does not run
+ * when the console is closed or Ctrl+C is pressed on Windows; a server left
+ * that way is caught by the port check on the next run.
+ */
+function test_start_server(string $host, int $port): void
+{
+    $probe = @fsockopen($host, $port, $errno, $errstr, 0.5);
+    if ($probe) {
+        fclose($probe);
+        fwrite(STDERR, "REFUSING TO RUN: something is already listening on $host:$port.\n"
+            . "This suite starts and stops its own server and will not test one it did\n"
+            . "not start. Find the process with\n"
+            . "    Get-NetTCPConnection -LocalPort $port -State Listen\n"
+            . "stop it, and run again.\n");
+        exit(1);
+    }
+
+    // Its output goes to a file, not a pipe: nothing reads a pipe while the
+    // suite runs, and a full one would block the server mid-test.
+    $log = (string) tempnam(sys_get_temp_dir(), 'exam_server_');
+
+    $server = proc_open(
+        [PHP_BINARY, '-S', "$host:$port", '-t', APP_ROOT . '/public', APP_ROOT . '/tests/router.php'],
+        [1 => ['file', $log, 'a'], 2 => ['file', $log, 'a']],
+        $pipes,
+        APP_ROOT,
+        array_merge(getenv(), ['EXAM_CONFIG' => 'config/config.test.php'])
+    );
+
+    if (!is_resource($server)) {
+        fwrite(STDERR, "Could not start the built-in server.\n");
+        exit(1);
+    }
+
+    register_shutdown_function(static function () use ($server, $log): void {
+        if (proc_get_status($server)['running']) {
+            proc_terminate($server);
+        }
+        proc_close($server);
+        if (is_file($log)) {
+            unlink($log);
+        }
+    });
+
+    // Wait for it to accept connections rather than sleeping a fixed amount,
+    // and stop waiting at once if it has already died.
+    $up = false;
+    for ($i = 0; $i < 100; $i++) {
+        if (!proc_get_status($server)['running']) {
+            break;
+        }
+        $sock = @fsockopen($host, $port, $errno, $errstr, 0.2);
+        if ($sock) {
+            fclose($sock);
+            $up = true;
+            break;
+        }
+        usleep(100000);
+    }
+
+    // The error handler above records warnings even under @, so every probe
+    // made before the server was listening left one. Those failures were the
+    // point of probing; drop them so a suite's diagnostics check judges only
+    // its own requests.
+    test_diagnostics();
+
+    if (!$up) {
+        fwrite(STDERR, "Server did not come up on $host:$port.\n--- server output ---\n"
+            . (string) file_get_contents($log) . "\n");
+        exit(1);
+    }
+}
+
 printf("test bootstrap: database '%s' on %s\n\n", DB_NAME, DB_HOST);

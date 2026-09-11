@@ -59,62 +59,11 @@ $host = '127.0.0.1';
 $port = 8098;
 $base = "http://$host:$port/";
 
+// Refuses to run if anything already holds the port, then starts its own
+// server and stops it on every way out. See test_start_server().
+test_start_server($host, $port);
+
 test_reset_database();
-
-$descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-$server = proc_open(
-    sprintf(
-        '%s -S %s:%d -t public %s',
-        escapeshellarg(PHP_BINARY),
-        $host,
-        $port,
-        escapeshellarg(APP_ROOT . '/tests/router.php')
-    ),
-    $descriptors,
-    $pipes,
-    APP_ROOT,
-    // The inherited environment PLUS the override, never the override alone.
-    // An array here replaces the child's whole environment, and on Windows a
-    // child without SystemRoot cannot initialise Winsock: the server exits
-    // with "Failed to listen ... (reason: ?)".
-    array_merge(getenv(), ['EXAM_CONFIG' => 'config/config.test.php'])
-);
-
-if (!is_resource($server)) {
-    fwrite(STDERR, "Could not start the built-in server.\n");
-    exit(1);
-}
-
-register_shutdown_function(static function () use ($server, $pipes): void {
-    foreach ($pipes as $p) {
-        if (is_resource($p)) fclose($p);
-    }
-    proc_terminate($server);
-    proc_close($server);
-});
-
-$up = false;
-for ($i = 0; $i < 100; $i++) {
-    $sock = @fsockopen($host, $port, $errno, $errstr, 0.2);
-    if ($sock) { fclose($sock); $up = true; break; }
-    usleep(100000);
-}
-
-if (!$up) {
-    // Say why, rather than leaving a bare timeout to guess at.
-    $status = proc_get_status($server);
-    stream_set_blocking($pipes[2], false);
-    fwrite(STDERR, "Server did not come up on $host:$port.\n"
-        . 'running: ' . var_export($status['running'], true)
-        . ', exitcode: ' . var_export($status['exitcode'], true) . "\n"
-        . "stderr:\n" . (string) stream_get_contents($pipes[2]) . "\n");
-    exit(1);
-}
-
-// The bootstrap's handler records warnings even under @, so every probe that
-// ran before the server was listening left one behind. Those failures were
-// the point of probing; drop them so Diagnostics judges only what follows.
-test_diagnostics();
 
 // ---- A cookie-carrying HTTP client, one jar per actor ---------------------
 

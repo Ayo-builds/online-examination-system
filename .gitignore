@@ -16,3 +16,7 @@ database/fixtures/*.docx
 # be committed. Anchored to the repository root so database/schema.sql, which is
 # structure only and IS tracked, stays unaffected.
 /*-backup-*.sql
+
+# Personal Claude Code permissions for this checkout. This one file only: the
+# rest of .claude/ may hold settings meant to be shared.
+/.claude/settings.local.json
