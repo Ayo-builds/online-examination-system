@@ -9,8 +9,12 @@
  * sweep has no endpoint of its own: it runs as a side effect of staff page
  * loads, so the only honest test is to load those pages and look at the rows.
  *
- * Each actor (lecturer, admin, two students) gets its own cookie jar, so they
+ * Each actor (lecturer, admin, three students) gets its own cookie jar, so they
  * hold separate sessions exactly as separate machines on the LAN would.
+ *
+ * Every deadline here is written with MySQL's clock (DATE_SUB(NOW(), ...)),
+ * because that is the clock the sweep compares against and the one start()
+ * used to set deadline_at. PHP's clock plays no part in what is measured.
  *
  * This file resets the test database and builds everything from nothing. The
  * reset also removes the users fixture: run tests/setup_users_fixture.php again
@@ -46,6 +50,39 @@ function same(string $what, $expected, $actual): void
         $expected === $actual,
         'expected ' . var_export($expected, true) . ', got ' . var_export($actual, true)
     );
+}
+
+/** Nested arrays flattened to 'path.to.field' => value. */
+function flatten(array $a, string $prefix = ''): array
+{
+    $out = [];
+    foreach ($a as $k => $v) {
+        $key = $prefix === '' ? (string) $k : "$prefix.$k";
+        if (is_array($v)) {
+            $out += flatten($v, $key);
+        } else {
+            $out[$key] = $v;
+        }
+    }
+    return $out;
+}
+
+/** Pass when $after equals $before field for field; on failure, name the fields. */
+function unchanged(string $what, array $before, array $after): void
+{
+    $b = flatten($before);
+    $a = flatten($after);
+
+    $changed = [];
+    foreach (array_unique(array_merge(array_keys($b), array_keys($a))) as $k) {
+        $bv = array_key_exists($k, $b) ? var_export($b[$k], true) : '(absent)';
+        $av = array_key_exists($k, $a) ? var_export($a[$k], true) : '(absent)';
+        if ($bv !== $av) {
+            $changed[] = "$k: $bv -> $av";
+        }
+    }
+
+    check($what, $changed === [], implode('; ', array_slice($changed, 0, 6)));
 }
 
 function section(string $title): void
@@ -138,10 +175,11 @@ $db->prepare("INSERT INTO courses (course_code, title, lecturer_id) VALUES (?,?,
    ->execute(['SWP101', 'Sweep Course', $lecturerId]);
 $courseId = (int) $db->lastInsertId();
 
-// One student per scenario: an exam allows one attempt per student.
+// One student per scenario: an exam allows one attempt per student. Admission
+// numbers follow this order: ADM/SWEEP/1 is 'abandoned', /7 is 'browser'.
 $studentPass = 'student-pass-123';
 $students = [];
-foreach (['abandoned', 'grace', 'live', 'submitter', 'returner'] as $i => $who) {
+foreach (['abandoned', 'four', 'live', 'submitter', 'returner', 'six', 'browser'] as $i => $who) {
     $db->prepare(
         "INSERT INTO users (full_name, admission_no, password_hash, role, class_id, status)
          VALUES (?,?,?, 'student', ?, 'active')"
@@ -202,16 +240,40 @@ function attempt_row(int $attemptId): array
     return $stmt->fetch();
 }
 
+/** Every column of one attempt and of each of its answers. */
+function attempt_snapshot(int $attemptId): array
+{
+    $stmt = Database::getInstance()->prepare(
+        "SELECT * FROM attempt_answers WHERE attempt_id = ? ORDER BY question_id"
+    );
+    $stmt->execute([$attemptId]);
+    return ['attempt' => attempt_row($attemptId), 'answers' => $stmt->fetchAll()];
+}
+
+/** Every column of every attempt and every answer in the database. */
+function everything_snapshot(): array
+{
+    $db = Database::getInstance();
+    return [
+        'attempts' => $db->query("SELECT * FROM exam_attempts ORDER BY id")->fetchAll(),
+        'answers'  => $db->query("SELECT * FROM attempt_answers ORDER BY attempt_id, question_id")->fetchAll(),
+    ];
+}
+
 // The abandoned candidate answered both questions, then vanished well past
 // the grace period.
 $attemptModel->saveAnswer($attempts['abandoned'], $mcqId, $correctOptionId, null);
 $attemptModel->saveAnswer($attempts['abandoned'], $essayId, null, 'Half an answer, then the power went.');
 set_deadline($attempts['abandoned'], 'DATE_SUB(NOW(), INTERVAL 10 MINUTE)');
 
-// Past the deadline, but still inside the grace window: their own late submit
-// may yet arrive, and it must be allowed to.
-check('the grace window is longer than the in-grace fixture', Attempt::SWEEP_GRACE_MINUTES > 2);
-set_deadline($attempts['grace'], 'DATE_SUB(NOW(), INTERVAL 2 MINUTE)');
+// The boundary. The sweep closes an attempt only once it is MORE than the
+// grace past its deadline: four minutes past is still the student's own time
+// to submit late, six is not. Both from MySQL's clock, as the sweep measures.
+// Nothing between here and the first sweep takes anywhere near a minute, so
+// 'four' is still inside the grace when the lecturer's page load runs.
+same('the grace period is five minutes', 5, Attempt::SWEEP_GRACE_MINUTES);
+set_deadline($attempts['four'], 'DATE_SUB(NOW(), INTERVAL 4 MINUTE)');
+set_deadline($attempts['six'],  'DATE_SUB(NOW(), INTERVAL 6 MINUTE)');
 
 // 'live' keeps the hour start() gave it.
 
@@ -232,6 +294,22 @@ $row = attempt_row($attempts['submitter']);
 same('it is submitted', 'submitted', $row['status']);
 same('with no system-close marker', null, $row['closed_by_system_at']);
 
+// A submit from the student's own browser that lands after the deadline: the
+// timer fired late, or a network drop delayed the POST. It is auto_submitted
+// but NOT closed by the system - a browser was there and reported its count.
+$token = sign_in('browser', 'ADM/SWEEP/7', $studentPass);
+set_deadline($attempts['browser'], 'DATE_SUB(NOW(), INTERVAL 1 MINUTE)');
+$res = http('browser', 'POST', 'student/submitExam/' . $attempts['browser'], [
+    'csrf_token'    => $token,
+    'unsaved_count' => 1,
+]);
+same('the late browser submit went through', 302, $res['status']);
+
+$row = attempt_row($attempts['browser']);
+same('it is auto-submitted', 'auto_submitted', $row['status']);
+same('with no system-close marker, because a browser submitted it', null, $row['closed_by_system_at']);
+same('and the count that browser reported', 1, (int) $row['unsaved_at_submit']);
+
 // The candidate who comes back after the deadline: nobody submitted this
 // paper either, and it is marked the same way the sweep marks one.
 sign_in('returner', 'ADM/SWEEP/5', $studentPass);
@@ -248,6 +326,20 @@ same('with submitted_at at the deadline, when the paper actually froze',
 // Student pages close only their own attempt. Nothing else moved.
 same('student pages did not sweep the abandoned attempt',
     'in_progress', attempt_row($attempts['abandoned'])['status']);
+
+// Move every finished paper well past the grace, so its deadline alone would
+// make it eligible. Only the status filter now keeps the sweep off these
+// rows, which is what the next section needs to show.
+$finished = [
+    'submitter' => 'a submitted row',
+    'browser'   => 'a row the browser auto-submitted',
+    'returner'  => 'a row the system already closed',
+];
+$before = [];
+foreach ($finished as $who => $label) {
+    set_deadline($attempts[$who], 'DATE_SUB(NOW(), INTERVAL 10 MINUTE)');
+    $before[$who] = attempt_snapshot($attempts[$who]);
+}
 
 // ---- A lecturer page load sweeps ------------------------------------------
 
@@ -268,23 +360,28 @@ check('it was graded on what reached the server',
     (float) $row['total_score'] === 10.0, 'total_score ' . var_export($row['total_score'], true));
 same('with its essay waiting for the lecturer', 'partial', $row['grading_status']);
 
-$stmt = $db->prepare("SELECT essay_text, awarded_marks FROM attempt_answers WHERE attempt_id = ? AND question_id = ?");
+$stmt = $db->prepare("SELECT essay_text, awarded_marks, graded_at FROM attempt_answers WHERE attempt_id = ? AND question_id = ?");
 $stmt->execute([$attempts['abandoned'], $essayId]);
 $essay = $stmt->fetch();
 same('the saved essay text survived the sweep', 'Half an answer, then the power went.', $essay['essay_text']);
 same('and is ungraded', null, $essay['awarded_marks']);
 
-same('an attempt inside the grace window is left alone',
-    'in_progress', attempt_row($attempts['grace'])['status']);
+$row = attempt_row($attempts['six']);
+same('six minutes past the deadline is closed', 'auto_submitted', $row['status']);
+check('and marked as closed by the system', $row['closed_by_system_at'] !== null);
+same('four minutes past the deadline is left alone',
+    'in_progress', attempt_row($attempts['four'])['status']);
 same('a live attempt is left alone', 'in_progress', attempt_row($attempts['live'])['status']);
-same('a student-submitted attempt is not re-marked',
-    null, attempt_row($attempts['submitter'])['closed_by_system_at']);
+
+foreach ($finished as $who => $label) {
+    unchanged("$label, past its deadline, is untouched",
+        $before[$who], attempt_snapshot($attempts[$who]));
+}
 
 check('the abandoned candidate now appears in the grading queue',
     strpos($grading['body'], 'Student Abandoned') !== false);
-same('and both papers nobody submitted carry the tag', 2, substr_count($grading['body'], '>Not submitted<'));
-
-same('a second sweep finds nothing to do', 0, (new Attempt())->sweepAbandoned());
+same('and the three papers nobody submitted carry the tag',
+    3, substr_count($grading['body'], '>Not submitted<'));
 
 // ---- What the lecturer sees on the paper ----------------------------------
 
@@ -311,34 +408,76 @@ $res = http('lecturer', 'POST', 'lecturer/saveEssayGrade/' . $attempts['abandone
 ]);
 same('the lecturer grades the essay', 302, $res['status']);
 
-$before = attempt_row($attempts['abandoned']);
-check('the total now includes the essay', (float) $before['total_score'] === 17.0,
-    'total_score ' . var_export($before['total_score'], true));
+check('the total now includes the essay',
+    (float) attempt_row($attempts['abandoned'])['total_score'] === 17.0,
+    'total_score ' . var_export(attempt_row($attempts['abandoned'])['total_score'], true));
+
+// Pin the timestamps a regrade or a re-close would rewrite to a moment nothing
+// in this run can produce. A rewrite then shows even when it happens inside
+// the same second as the grading above.
+$pinned = '2026-01-01 08:00:00';
+$db->prepare("UPDATE exam_attempts SET closed_by_system_at = ? WHERE id = ?")
+   ->execute([$pinned, $attempts['abandoned']]);
+$db->prepare("UPDATE attempt_answers SET graded_at = ? WHERE attempt_id = ?")
+   ->execute([$pinned, $attempts['abandoned']]);
+
+$before = attempt_snapshot($attempts['abandoned']);
 
 // What a sweep or a late submit arriving second would do.
 same('closing it again reports that nothing was closed', false, (new Attempt())->autoSubmit($attempts['abandoned']));
 same('a late submit arriving second is a no-op too', null,
     (new Attempt())->submitAndGrade($attempts['abandoned'], 'auto_submitted', 3));
 
-$after = attempt_row($attempts['abandoned']);
+$after = attempt_snapshot($attempts['abandoned']);
 $stmt->execute([$attempts['abandoned'], $essayId]);
-check('the essay mark survived', (float) $stmt->fetch()['awarded_marks'] === 7.0);
-same('the total is unchanged', $before['total_score'], $after['total_score']);
-same('grading is still complete', 'complete', $after['grading_status']);
-same('submitted_at is unchanged', $before['submitted_at'], $after['submitted_at']);
-same('the unsaved count was not overwritten', 0, (int) $after['unsaved_at_submit']);
+$essay = $stmt->fetch();
+check('the essay mark survived', (float) $essay['awarded_marks'] === 7.0,
+    'awarded_marks ' . var_export($essay['awarded_marks'], true));
+same('and so did when it was graded', $pinned, $essay['graded_at']);
+same('the total is unchanged', $before['attempt']['total_score'], $after['attempt']['total_score']);
+same('grading is still complete', 'complete', $after['attempt']['grading_status']);
+same('closed_by_system_at is unchanged', $pinned, $after['attempt']['closed_by_system_at']);
+same('submitted_at is unchanged', $before['attempt']['submitted_at'], $after['attempt']['submitted_at']);
+same('the unsaved count was not overwritten', 0, (int) $after['attempt']['unsaved_at_submit']);
+unchanged('nothing else on the paper changed either', $before, $after);
+
+// ---- A second sweep changes nothing ---------------------------------------
+
+section('A second sweep changes nothing');
+
+// Every attempt is now finished, still live, or ('four') inside its grace, so
+// a sweep has nothing to do - and must do nothing, to any row, including the
+// papers it closed itself and the essay graded since.
+//
+// Pin every timestamp a re-close or a regrade would rewrite, as above. Without
+// this, a second pass that rewrites rows within the same second as the first
+// leaves them byte-identical and the comparison below cannot see it - which
+// is exactly how this check passed against a sweep with no status filter
+// before the pins were added.
+$db->prepare("UPDATE exam_attempts SET closed_by_system_at = ? WHERE closed_by_system_at IS NOT NULL")
+   ->execute([$pinned]);
+$db->prepare("UPDATE attempt_answers SET graded_at = ? WHERE graded_at IS NOT NULL")
+   ->execute([$pinned]);
+
+$before = everything_snapshot();
+
+$res = http('lecturer', 'GET', 'lecturer/grading');
+same('a second lecturer page load succeeds', 200, $res['status']);
+same('and a direct second sweep closes nothing', 0, (new Attempt())->sweepAbandoned());
+
+unchanged('no row in exam_attempts or attempt_answers changed', $before, everything_snapshot());
 
 // ---- Admin analytics sweeps too -------------------------------------------
 
 section('Admin analytics sweeps too');
 
-set_deadline($attempts['grace'], 'DATE_SUB(NOW(), INTERVAL 10 MINUTE)');
+set_deadline($attempts['four'], 'DATE_SUB(NOW(), INTERVAL 10 MINUTE)');
 
 sign_in('admin', 'sweep-admin@exam.local', 'admin-pass-123');
 $res = http('admin', 'GET', 'admin/analytics');
 same('admin analytics loads', 200, $res['status']);
 
-$row = attempt_row($attempts['grace']);
+$row = attempt_row($attempts['four']);
 same('the now-abandoned attempt was closed by it', 'auto_submitted', $row['status']);
 check('and marked', $row['closed_by_system_at'] !== null);
 same('the live attempt is still live', 'in_progress', attempt_row($attempts['live'])['status']);
