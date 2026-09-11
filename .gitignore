@@ -17,6 +17,9 @@ database/fixtures/*.docx
 # structure only and IS tracked, stays unaffected.
 /*-backup-*.sql
 
-# Personal Claude Code permissions for this checkout. This one file only: the
-# rest of .claude/ may hold settings meant to be shared.
-/.claude/settings.local.json
+# Per-machine agent tooling: Claude Code settings and skills, Codex config,
+# and installed agent skills. The rules every agent follows live in AGENTS.md,
+# which is tracked; these folders are each machine's own setup.
+.claude/
+.codex/
+.agents/
