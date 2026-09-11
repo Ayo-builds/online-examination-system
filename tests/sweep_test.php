@@ -451,6 +451,15 @@ function grade_box(string $html): ?string
     return preg_match('/class="review-grade[^"]*">\s*([^<]*?)\s*</', $html, $m) ? $m[1] : null;
 }
 
+// The Grade row of the main table, as the plain text a student reads.
+function grade_row(string $html): ?string
+{
+    if (!preg_match('#<th scope="row">Grade</th>\s*<td>(.*?)</td>#s', $html, $m)) {
+        return null;
+    }
+    return trim((string) preg_replace('/\s+/', ' ', strip_tags($m[1])));
+}
+
 // A paper the system closed, its essay still unmarked: 'returner'.
 $page = http('returner', 'GET', 'student/result/' . $attempts['returner']);
 same('a system-closed paper\'s result opens', 200, $page['status']);
@@ -460,7 +469,9 @@ check('that no submission was received', strpos($page['body'], 'No submission') 
     && strpos($page['body'], 'was received; the answers saved before then were counted') !== false);
 check('and not that it was submitted automatically',
     strpos($page['body'], 'submitted automatically when time expired') === false);
-same('with an essay unmarked, the sidebar grade is Pending', 'Pending', grade_box($page['body']));
+same('with an essay unmarked, the Grade row is a running total',
+    '0.00 so far, essays still to be marked', grade_row($page['body']));
+same('and the sidebar grade is Pending', 'Pending', grade_box($page['body']));
 
 // A browser that did submit at the deadline keeps the old wording: 'browser'.
 $page = http('browser', 'GET', 'student/result/' . $attempts['browser']);
@@ -471,12 +482,29 @@ check('and not that the system closed it',
     strpos($page['body'], 'Closed by the system') === false);
 same('its essay is unmarked too, so its grade is Pending', 'Pending', grade_box($page['body']));
 
-// Marking complete - the essay was graded above, 17 of 20 - so the
-// percentage appears: 'abandoned'.
+// Marking complete - the essay was graded above, 17 of 20 - so the figure is
+// final in both places: 'abandoned'.
 sign_in('abandoned', 'ADM/SWEEP/1', $studentPass);
 $page = http('abandoned', 'GET', 'student/result/' . $attempts['abandoned']);
 same('a fully marked paper\'s result opens', 200, $page['status']);
-same('once marking is complete, the sidebar grade is the percentage', '85%', grade_box($page['body']));
+same('once marking is complete, the Grade row is final',
+    '17.00 out of 20 (85%)', grade_row($page['body']));
+same('and the sidebar grade is the percentage', '85%', grade_box($page['body']));
+
+// 'pending' on a finished paper. Nothing in the app writes that - a close and
+// its grading commit together in Attempt::claimAndGrade() - so it can only
+// come from a direct write or from rows older than grading. Forced here on
+// 'submitter', then put back.
+$was = attempt_row($attempts['submitter'])['grading_status'];
+$db->prepare("UPDATE exam_attempts SET grading_status = 'pending' WHERE id = ?")
+   ->execute([$attempts['submitter']]);
+$page = http('submitter', 'GET', 'student/result/' . $attempts['submitter']);
+same('a paper awaiting marking opens', 200, $page['status']);
+same('its Grade row says it is awaiting marking, with no figure',
+    'Awaiting marking', grade_row($page['body']));
+same('and its sidebar grade is Pending', 'Pending', grade_box($page['body']));
+$db->prepare("UPDATE exam_attempts SET grading_status = ? WHERE id = ?")
+   ->execute([$was, $attempts['submitter']]);
 
 // ---- A second sweep changes nothing ---------------------------------------
 

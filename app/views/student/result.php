@@ -12,6 +12,11 @@ $pct      = $maxMarks > 0 ? round($score / $maxMarks * 100) : 0;
 $started  = strtotime($attempt['started_at']);
 $ended    = $attempt['submitted_at'] ? strtotime($attempt['submitted_at']) : null;
 
+// A figure reads as the final grade, so one is shown as final only once
+// marking is complete. Before that it is a running total ('partial') or
+// nothing at all ('pending').
+$complete = $attempt['grading_status'] === 'complete';
+
 $duration = '';
 if ($ended !== null) {
     $secs  = max(0, $ended - $started);
@@ -93,13 +98,15 @@ if ($ended !== null) {
                         <tr>
                             <th scope="row">Grade</th>
                             <td>
-                                <?php if ($attempt['grading_status'] === 'partial'): ?>
-                                    <strong><?= htmlspecialchars($attempt['total_score']) ?></strong>
-                                    so far, essays still to be marked
-                                <?php else: ?>
+                                <?php if ($complete): ?>
                                     <strong><?= htmlspecialchars($attempt['total_score']) ?></strong>
                                     out of <?= htmlspecialchars(rtrim(rtrim(number_format($maxMarks, 2), '0'), '.')) ?>
                                     (<strong><?= $pct ?>%</strong>)
+                                <?php elseif ($attempt['grading_status'] === 'partial'): ?>
+                                    <strong><?= htmlspecialchars($attempt['total_score']) ?></strong>
+                                    so far, essays still to be marked
+                                <?php else: ?>
+                                    Awaiting marking
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -237,7 +244,7 @@ if ($ended !== null) {
                     <p class="qnav__label">Grade</p>
                     <?php /* A percentage of a partly marked paper reads as the final
                              grade. It appears only once every essay is marked. */ ?>
-                    <?php if ($attempt['grading_status'] === 'complete'): ?>
+                    <?php if ($complete): ?>
                         <div class="review-grade"><?= $pct ?>%</div>
                     <?php else: ?>
                         <div class="review-grade review-grade--pending">Pending</div>
