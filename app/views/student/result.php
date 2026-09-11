@@ -62,7 +62,14 @@ if ($ended !== null) {
                         <tr>
                             <th scope="row">Status</th>
                             <td>
-                                <?php if ($attempt['status'] === 'auto_submitted'): ?>
+                                <?php /* Nobody pressed Submit: the deadline passed and the
+                                         system closed the paper (Attempt::autoSubmit). A
+                                         browser that did submit at the deadline keeps the
+                                         wording below. */ ?>
+                                <?php if ($attempt['closed_by_system_at'] !== null): ?>
+                                    Closed by the system after time ran out. No submission
+                                    was received; the answers saved before then were counted.
+                                <?php elseif ($attempt['status'] === 'auto_submitted'): ?>
                                     Finished, submitted automatically when time expired
                                 <?php else: ?>
                                     Finished
@@ -228,7 +235,13 @@ if ($ended !== null) {
 
                 <div class="qnav__meta">
                     <p class="qnav__label">Grade</p>
-                    <div class="review-grade"><?= $pct ?>%</div>
+                    <?php /* A percentage of a partly marked paper reads as the final
+                             grade. It appears only once every essay is marked. */ ?>
+                    <?php if ($attempt['grading_status'] === 'complete'): ?>
+                        <div class="review-grade"><?= $pct ?>%</div>
+                    <?php else: ?>
+                        <div class="review-grade review-grade--pending">Pending</div>
+                    <?php endif; ?>
                 </div>
             </aside>
         </div>

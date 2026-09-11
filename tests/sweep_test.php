@@ -441,6 +441,43 @@ same('submitted_at is unchanged', $before['attempt']['submitted_at'], $after['at
 same('the unsaved count was not overwritten', 0, (int) $after['attempt']['unsaved_at_submit']);
 unchanged('nothing else on the paper changed either', $before, $after);
 
+// ---- What the student sees on their result page ---------------------------
+
+section('What the student sees on their result page');
+
+// The sidebar grade box, whatever it holds.
+function grade_box(string $html): ?string
+{
+    return preg_match('/class="review-grade[^"]*">\s*([^<]*?)\s*</', $html, $m) ? $m[1] : null;
+}
+
+// A paper the system closed, its essay still unmarked: 'returner'.
+$page = http('returner', 'GET', 'student/result/' . $attempts['returner']);
+same('a system-closed paper\'s result opens', 200, $page['status']);
+check('its status says the system closed it after time ran out',
+    strpos($page['body'], 'Closed by the system after time ran out') !== false);
+check('that no submission was received', strpos($page['body'], 'No submission') !== false
+    && strpos($page['body'], 'was received; the answers saved before then were counted') !== false);
+check('and not that it was submitted automatically',
+    strpos($page['body'], 'submitted automatically when time expired') === false);
+same('with an essay unmarked, the sidebar grade is Pending', 'Pending', grade_box($page['body']));
+
+// A browser that did submit at the deadline keeps the old wording: 'browser'.
+$page = http('browser', 'GET', 'student/result/' . $attempts['browser']);
+same('a paper the browser submitted late opens', 200, $page['status']);
+check('its status still says it was submitted automatically',
+    strpos($page['body'], 'Finished, submitted automatically when time expired') !== false);
+check('and not that the system closed it',
+    strpos($page['body'], 'Closed by the system') === false);
+same('its essay is unmarked too, so its grade is Pending', 'Pending', grade_box($page['body']));
+
+// Marking complete - the essay was graded above, 17 of 20 - so the
+// percentage appears: 'abandoned'.
+sign_in('abandoned', 'ADM/SWEEP/1', $studentPass);
+$page = http('abandoned', 'GET', 'student/result/' . $attempts['abandoned']);
+same('a fully marked paper\'s result opens', 200, $page['status']);
+same('once marking is complete, the sidebar grade is the percentage', '85%', grade_box($page['body']));
+
 // ---- A second sweep changes nothing ---------------------------------------
 
 section('A second sweep changes nothing');

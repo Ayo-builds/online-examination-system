@@ -1859,6 +1859,9 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   font-size: 1.75rem; font-weight: 700; line-height: 1;
   color: var(--q-ink); letter-spacing: -0.01em;
 }
+/* Essays still unmarked: a word, not a number, and muted so it cannot be
+   mistaken for a final grade. */
+.review-grade--pending { color: var(--q-muted); }
 
 /* ---------- Credential slips --------------------------------------------- */
 /* The printable page produced by a student import: one slip per student, laid
