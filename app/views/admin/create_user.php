@@ -47,7 +47,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
             <label for="role">Role</label>
             <select id="role" name="role" required>
                 <option value="student"  <?= $oldRole === 'student'  ? 'selected' : '' ?>>Student</option>
-                <option value="lecturer" <?= $oldRole === 'lecturer' ? 'selected' : '' ?>>Lecturer</option>
+                <option value="lecturer" <?= $oldRole === 'lecturer' ? 'selected' : '' ?>>Teacher</option>
                 <option value="admin"    <?= $oldRole === 'admin'    ? 'selected' : '' ?>>Admin</option>
             </select>
         </div>

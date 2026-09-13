@@ -140,7 +140,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
         </div>
 
         <p class="muted small">
-            Deleting a batch removes the accounts it created, and their course enrolments
+            Deleting a batch removes the accounts it created, and their subject enrolments
             with them. An account that has started or submitted an exam is never deleted,
             because its script would go too. The batch itself stays listed either way, as
             the record of what was imported.

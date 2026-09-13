@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Courses · <?= APP_NAME ?></title>
+    <title>Subjects · <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
@@ -12,16 +12,16 @@
 <main class="shell shell--wide">
 
 <?php
-$page_title = 'Courses';
+$page_title = 'Subjects';
 ob_start(); ?>
-            <a class="btn btn--primary btn--sm" href="<?= BASE_URL ?>admin/createCourse">Create course</a>
+            <a class="btn btn--primary btn--sm" href="<?= BASE_URL ?>admin/createCourse">Create subject</a>
 <?php $page_actions = ob_get_clean();
 require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (empty($courses)): ?>
         <div class="empty">
-            <p>No courses yet.</p>
-            <p class="small stack-sm">Create one and assign it to a lecturer.</p>
+            <p>No subjects yet.</p>
+            <p class="small stack-sm">Create one and assign it to a teacher.</p>
         </div>
     <?php else: ?>
     <div class="table-wrap">
@@ -30,7 +30,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                 <tr>
                     <th>Code</th>
                     <th>Title</th>
-                    <th>Lecturer</th>
+                    <th>Teacher</th>
                     <th>Actions</th>
                 </tr>
             </thead>

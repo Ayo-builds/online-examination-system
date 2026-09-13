@@ -18,7 +18,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
     <?php if (empty($exams)): ?>
         <div class="empty">
             <p>No exams available yet.</p>
-            <p class="small stack-sm">An exam appears here once a lecturer publishes one in a course you are enrolled in.</p>
+            <p class="small stack-sm">An exam appears here once a teacher publishes one in a subject you are enrolled in.</p>
         </div>
     <?php else: ?>
         <?php foreach ($exams as $e): ?>

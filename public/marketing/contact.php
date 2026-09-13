@@ -46,9 +46,9 @@ require __DIR__ . '/_partials/nav.php';
 
         <article class="role">
           <p class="role__who">If you are a student</p>
-          <h3 class="role__title">Ask your lecturer first</h3>
+          <h3 class="role__title">Ask your teacher first</h3>
           <p class="role__body">
-            Anything about a paper sits with the lecturer who owns the course. That
+            Anything about a paper sits with the teacher who owns the subject. That
             covers a missing exam, a mark you want to query, or an essay still unmarked. They can see the
             exam's window, whether it is published, and your attempt's record. For
             problems signing in or an account that will not open, your institution's
@@ -57,11 +57,11 @@ require __DIR__ . '/_partials/nav.php';
         </article>
 
         <article class="role">
-          <p class="role__who">If you are a lecturer</p>
+          <p class="role__who">If you are a teacher</p>
           <h3 class="role__title">Ask your administrator</h3>
           <p class="role__body">
-            Accounts, course records and enrolment are administrator territory. If a
-            student is missing from a course, or a colleague needs an account, that is the
+            Accounts, subject records and enrolment are administrator territory. If a
+            student is missing from a subject, or a colleague needs an account, that is the
             route. Authoring, assembling and marking papers you can do yourself, and a
             student who is not enrolled will not see your exam no matter how it is
             configured.
@@ -117,7 +117,7 @@ require __DIR__ . '/_partials/nav.php';
             <p class="principle__body">
               There are three reasons, and only three. The exam has not been published yet;
               the current time is outside its availability window; or you are not enrolled
-              on the course it belongs to. Your lecturer can tell you which of the three it
+              in the subject it belongs to. Your teacher can tell you which of the three it
               is in a moment. The first two resolve themselves, the third does not.
             </p>
           </div>
@@ -143,7 +143,7 @@ require __DIR__ . '/_partials/nav.php';
             <h3 class="principle__title">Your result is showing but looks incomplete.</h3>
             <p class="principle__body">
               Multiple-choice answers score immediately; essay answers wait for your
-              lecturer to mark them by hand. A score that seems low straight after
+              teacher to mark them by hand. A score that seems low straight after
               submitting usually means the written answers have not been marked yet. It
               will change when they are.
             </p>
@@ -192,7 +192,7 @@ require __DIR__ . '/_partials/nav.php';
           </div>
           <div class="spec__row">
             <span class="spec__k">If an exam</span>
-            <span class="spec__v">The course code and the exam's title</span>
+            <span class="spec__v">The subject code and the exam's title</span>
           </div>
           <div class="spec__row">
             <span class="spec__k">If an attempt</span>
@@ -219,7 +219,7 @@ require __DIR__ . '/_partials/nav.php';
         <p class="eyebrow">Already registered</p>
         <h2 class="cta__title">If you can sign in, start there.</h2>
         <p class="lead">
-          Your dashboard shows your courses, your exams and their windows, which answers
+          Your dashboard shows your subjects, your exams and their windows, which answers
           most questions faster than asking will.
         </p>
         <a class="btn btn--primary" href="<?= e(url(LOGIN_URL_PATH)) ?>">

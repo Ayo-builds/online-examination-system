@@ -115,7 +115,7 @@ if ($ended !== null) {
 
                 <?php if ($attempt['grading_status'] === 'partial'): ?>
                     <p class="quiz__notice">
-                        This exam has essay questions awaiting marking by your lecturer.
+                        This exam has essay questions awaiting marking by your teacher.
                         Your final grade appears here once marking is complete.
                     </p>
                 <?php endif; ?>

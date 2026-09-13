@@ -92,7 +92,7 @@ class AdminController extends Controller
             $errors[] = 'Password must be at least 8 characters.';
         }
         if (!in_array($role, ['admin', 'lecturer', 'student'], true)) {
-            $errors[] = 'Role must be admin, lecturer, or student.';
+            $errors[] = 'Role must be admin, teacher, or student.';
         }
 
         if ($isStudent) {
@@ -596,7 +596,7 @@ class AdminController extends Controller
         $errors = [];
 
         if (!preg_match('/^[A-Z]{2,5}[0-9]{3}$/', $code)) {
-            $errors[] = 'Course code must be 2-5 letters followed by 3 digits (e.g. CSC301).';
+            $errors[] = 'Subject code must be 2-5 letters followed by 3 digits (e.g. CSC301).';
         }
         if ($title === '' || mb_strlen($title) > 150) {
             $errors[] = 'Title is required (max 150 characters).';
@@ -605,13 +605,13 @@ class AdminController extends Controller
         // The lecturer must exist, be a lecturer, and be active
         $lecturer = (new User())->find($lecturerId);
         if ($lecturer === null || $lecturer['role'] !== 'lecturer' || $lecturer['status'] !== 'active') {
-            $errors[] = 'Please choose a valid lecturer.';
+            $errors[] = 'Please choose a valid teacher.';
         }
 
         $courseModel = new Course();
 
         if (empty($errors) && $courseModel->findByCode($code) !== null) {
-            $errors[] = 'That course code already exists.';
+            $errors[] = 'That subject code already exists.';
         }
 
         if (!empty($errors)) {

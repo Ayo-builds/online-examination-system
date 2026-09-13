@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Course · <?= APP_NAME ?></title>
+    <title>Create Subject · <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
 <main class="shell shell--tight">
 
 <?php
-$page_title = 'Create a course';
+$page_title = 'Create a subject';
 require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (!empty($errors)): ?>
@@ -25,9 +25,9 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (empty($lecturers)): ?>
         <div class="empty">
-            <p>No active lecturers exist yet.</p>
+            <p>No active teachers exist yet.</p>
             <p class="small stack-sm">
-                <a href="<?= BASE_URL ?>admin/createUser">Create a lecturer account</a> before adding a course.
+                <a href="<?= BASE_URL ?>admin/createUser">Create a teacher account</a> before adding a subject.
             </p>
         </div>
     <?php else: ?>
@@ -35,7 +35,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
         <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
 
         <div class="field">
-            <label for="course_code">Course code</label>
+            <label for="course_code">Subject code</label>
             <input type="text" id="course_code" name="course_code" required
                    placeholder="e.g. CSC301"
                    value="<?= htmlspecialchars($old['course_code'] ?? '') ?>">
@@ -48,9 +48,9 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
         </div>
 
         <div class="field">
-            <label for="lecturer_id">Lecturer</label>
+            <label for="lecturer_id">Teacher</label>
             <select id="lecturer_id" name="lecturer_id" required>
-                <option value="">&mdash; Select lecturer &mdash;</option>
+                <option value="">&mdash; Select teacher &mdash;</option>
                 <?php foreach ($lecturers as $l): ?>
                 <option value="<?= (int) $l['id'] ?>"
                     <?= ((int) ($old['lecturer_id'] ?? 0)) === (int) $l['id'] ? 'selected' : '' ?>>
@@ -61,7 +61,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
         </div>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn--primary">Create course</button>
+            <button type="submit" class="btn btn--primary">Create subject</button>
             <a class="btn btn--quiet" href="<?= BASE_URL ?>admin/courses">Cancel</a>
         </div>
     </form>

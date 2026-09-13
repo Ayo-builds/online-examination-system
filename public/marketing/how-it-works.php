@@ -49,14 +49,14 @@ require __DIR__ . '/_partials/nav.php';
             <h3 class="stage__title">Enrol the cohort</h3>
             <p class="stage__text">
               Before an exam can exist, the system has to know who its people are. An
-              administrator creates accounts with a role attached, sets up courses, and
+              administrator creates accounts with a role attached, sets up subjects, and
               enrols students onto the ones they are registered for. Enrolment is the gate
               that matters: it decides who can reach a paper at all.
             </p>
             <ul class="stage__detail">
-              <li>Every account carries one role, either student, lecturer or administrator</li>
-              <li>Courses created and assigned to a lecturer</li>
-              <li>Students enrolled per course</li>
+              <li>Every account carries one role, either student, teacher or administrator</li>
+              <li>Subjects created and assigned to a teacher</li>
+              <li>Students enrolled per subject</li>
               <li>A student who is not enrolled is refused, URL or no URL</li>
             </ul>
           </div>
@@ -65,11 +65,11 @@ require __DIR__ . '/_partials/nav.php';
         <li class="stage">
           <p class="stage__num" aria-hidden="true"></p>
           <div class="stage__body">
-            <p class="stage__role">Lecturer</p>
+            <p class="stage__role">Teacher</p>
             <h3 class="stage__title">Build the pool, then the paper</h3>
             <p class="stage__text">
-              Questions live in a pool attached to the course rather than inside one
-              exam, so a question written once can serve several sittings. The lecturer
+              Questions live in a pool attached to the subject rather than inside one
+              exam, so a question written once can serve several sittings. The teacher
               then defines the exam over that pool: how long it runs, when it is open, and
               how many questions each candidate should be given. It stays invisible to
               students until it is published.
@@ -110,20 +110,20 @@ require __DIR__ . '/_partials/nav.php';
         <li class="stage">
           <p class="stage__num" aria-hidden="true"></p>
           <div class="stage__body">
-            <p class="stage__role">Lecturer, then student</p>
+            <p class="stage__role">Teacher, then student</p>
             <h3 class="stage__title">Mark and publish</h3>
             <p class="stage__text">
               On submission, multiple-choice answers are graded against the correct
               answers frozen into that paper, not against whatever the question pool
               says today, which is what keeps an old result reproducible. Essays queue for
-              the lecturer. Once nothing is outstanding, the score reaches the student and
-              the analytics reach the lecturer.
+              the teacher. Once nothing is outstanding, the score reaches the student and
+              the analytics reach the teacher.
             </p>
             <ul class="stage__detail">
               <li>Objective questions graded the moment the attempt is submitted</li>
               <li>Graded against answers frozen at draw time, not current ones</li>
               <li>Essay answers queued for manual marking</li>
-              <li>Per-question difficulty and cohort distribution for the lecturer</li>
+              <li>Per-question difficulty and cohort distribution for the teacher</li>
             </ul>
           </div>
         </li>
@@ -195,7 +195,7 @@ require __DIR__ . '/_partials/nav.php';
         <div class="tl">
           <span class="tl__at">Later</span>
           <span class="tl__what">Essays marked; result published to the student</span>
-          <span class="tl__who">Lecturer</span>
+          <span class="tl__who">Teacher</span>
         </div>
 
       </div>
@@ -291,7 +291,7 @@ require __DIR__ . '/_partials/nav.php';
         <p class="eyebrow">Already registered</p>
         <h2 class="cta__title">Sign in and pick up where your role starts.</h2>
         <p class="lead">
-          Students, lecturers and administrators all use the same sign-in page.
+          Students, teachers and administrators all use the same sign-in page.
         </p>
         <a class="btn btn--primary" href="<?= e(url(LOGIN_URL_PATH)) ?>">
           Sign in

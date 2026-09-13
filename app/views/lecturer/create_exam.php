@@ -30,7 +30,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
         <div class="field">
             <label for="title">Title</label>
             <input type="text" id="title" name="title" required
-                   placeholder="e.g. Mid-Semester Test"
+                   placeholder="e.g. Mid-Term Test"
                    value="<?= htmlspecialchars($old['title'] ?? '') ?>">
         </div>
 

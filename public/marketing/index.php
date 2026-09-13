@@ -110,10 +110,10 @@ require __DIR__ . '/_partials/nav.php';
         </article>
 
         <article class="role">
-          <p class="role__who">Lecturers</p>
+          <p class="role__who">Teachers</p>
           <h3 class="role__title">Set and mark</h3>
           <p class="role__body">
-            Write multiple-choice and essay questions into a per-course pool, assemble
+            Write multiple-choice and essay questions into a per-subject pool, assemble
             them into a paper, then mark what needs a human eye. Objective questions
             score themselves.
           </p>
@@ -123,7 +123,7 @@ require __DIR__ . '/_partials/nav.php';
           <p class="role__who">Administrators</p>
           <h3 class="role__title">Run the institution</h3>
           <p class="role__body">
-            Create accounts, enrol cohorts onto courses, and read integrity signals
+            Create accounts, enrol cohorts onto subjects, and read integrity signals
             across every exam sitting, including the ones happening right now.
           </p>
         </article>
@@ -194,7 +194,7 @@ require __DIR__ . '/_partials/nav.php';
           </div>
           <h3 class="feature__title">Role-based access</h3>
           <p class="feature__body">
-            Student, lecturer and administrator are separated at the route, not just
+            Student, teacher and administrator are separated at the route, not just
             hidden in the interface. Signing in puts you on your own dashboard and
             nowhere else.
           </p>
@@ -221,7 +221,7 @@ require __DIR__ . '/_partials/nav.php';
           <ul class="feature__list">
             <li>Per-question difficulty breakdown</li>
             <li>Cohort score distribution</li>
-            <li>Course and institution summaries</li>
+            <li>Subject and institution summaries</li>
           </ul>
         </article>
 
@@ -246,7 +246,7 @@ require __DIR__ . '/_partials/nav.php';
         <li class="step">
           <h3 class="step__title">Enrol the cohort</h3>
           <p class="step__body">
-            An administrator creates accounts and enrols students onto the courses
+            An administrator creates accounts and enrols students onto the subjects
             they are registered for. Enrolment is what decides who can open a paper.
           </p>
         </li>
@@ -254,7 +254,7 @@ require __DIR__ . '/_partials/nav.php';
         <li class="step">
           <h3 class="step__title">Author the paper</h3>
           <p class="step__body">
-            A lecturer writes questions into the course pool, assembles them into an
+            A teacher writes questions into the subject pool, assembles them into an
             exam, and sets its duration and availability window.
           </p>
         </li>
@@ -270,7 +270,7 @@ require __DIR__ . '/_partials/nav.php';
         <li class="step">
           <h3 class="step__title">Mark and publish</h3>
           <p class="step__body">
-            Objective answers score on submission. Essays queue for the lecturer, and
+            Objective answers score on submission. Essays queue for the teacher, and
             results publish to students once marking is complete.
           </p>
         </li>
@@ -351,7 +351,7 @@ require __DIR__ . '/_partials/nav.php';
         <p class="eyebrow">Already registered</p>
         <h2 class="cta__title">Sign in and pick up where your role starts.</h2>
         <p class="lead">
-          Students, lecturers and administrators all use the same sign-in page. You will
+          Students, teachers and administrators all use the same sign-in page. You will
           land on the dashboard for your role.
         </p>
         <a class="btn btn--primary" href="<?= e(url(LOGIN_URL_PATH)) ?>">

@@ -22,12 +22,12 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
             <span class="tile__body">Create accounts, suspend or reactivate people.</span>
         </a>
         <a class="tile" href="<?= BASE_URL ?>admin/courses">
-            <span class="tile__title">Courses</span>
-            <span class="tile__body">Set up courses, assign lecturers, manage enrolments.</span>
+            <span class="tile__title">Subjects</span>
+            <span class="tile__body">Set up subjects, assign teachers, manage enrolments.</span>
         </a>
         <a class="tile" href="<?= BASE_URL ?>admin/analytics">
             <span class="tile__title">System analytics</span>
-            <span class="tile__body">Usage across every course, and exam integrity rates.</span>
+            <span class="tile__body">Usage across every subject, and exam integrity rates.</span>
         </a>
     </div>
 

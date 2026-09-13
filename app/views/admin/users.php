@@ -59,7 +59,7 @@ $sortable = static function (string $key, string $label) use ($query, $listUrl):
                     <option value="all" <?= $query->role === '' ? 'selected' : '' ?>>Everyone</option>
                     <?php foreach (UserListQuery::ROLES as $roleOption): ?>
                         <option value="<?= e($roleOption) ?>" <?= $query->role === $roleOption ? 'selected' : '' ?>>
-                            <?= e(ucfirst($roleOption)) ?><?= $roleOption === 'student' ? 's only' : 's' ?>
+                            <?= e(role_label($roleOption)) ?><?= $roleOption === 'student' ? 's only' : 's' ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -115,7 +115,7 @@ $sortable = static function (string $key, string $label) use ($query, $listUrl):
         <?php if ($query->role === ''): ?>
             <span class="tag tag--muted">All roles</span>
         <?php else: ?>
-            <span class="tag"><?= e(ucfirst($query->role)) ?>s only</span>
+            <span class="tag"><?= e(role_label($query->role)) ?>s only</span>
         <?php endif; ?>
 
         <?php if ($query->q !== ''): ?>
@@ -201,7 +201,7 @@ $sortable = static function (string $key, string $label) use ($query, $listUrl):
 
                     <!-- Role is plain text: every row has one, so a pill on
                          each adds colour without adding information. -->
-                    <td class="col--secondary small"><?= e($u['role']) ?></td>
+                    <td class="col--secondary small"><?= e(strtolower(role_label($u['role']))) ?></td>
 
                     <!-- Only the exception is marked. Active is the norm and
                          needs no badge; a column of green pills would bury the

@@ -122,7 +122,7 @@ $sortable = static function (string $key, string $label) use ($query, $listUrl):
 
     <h2 class="section">Enrol one student</h2>
     <?php if (empty($available)): ?>
-        <p class="muted small">Every active student is already enrolled in this course.</p>
+        <p class="muted small">Every active student is already enrolled in this subject.</p>
     <?php else: ?>
     <form method="POST" action="<?= BASE_URL ?>admin/enroll/<?= $courseId ?>" class="inline-form">
         <input type="hidden" name="csrf_token" value="<?= e(Csrf::token()) ?>">

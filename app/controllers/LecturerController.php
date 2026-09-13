@@ -32,7 +32,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $questionModel = new Question();
@@ -52,7 +52,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $this->view('lecturer/create_mcq', ['course' => $course]);
@@ -74,7 +74,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $questionText = trim($_POST['question_text'] ?? '');
@@ -140,7 +140,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $this->view('lecturer/create_essay', ['course' => $course]);
@@ -162,7 +162,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $questionText = trim($_POST['question_text'] ?? '');
@@ -201,7 +201,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $question = (new Question())->findWithOptions($questionId, $courseId);
@@ -234,7 +234,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $questionModel = new Question();
@@ -264,7 +264,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $this->view('lecturer/exams', [
@@ -282,7 +282,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $this->view('lecturer/create_exam', ['course' => $course]);
@@ -303,7 +303,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $title        = trim($_POST['title'] ?? '');
@@ -374,7 +374,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $exam = (new Exam())->findInCourse($examId, $courseId);
@@ -408,7 +408,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $exam = (new Exam())->findInCourse($examId, $courseId);
@@ -460,7 +460,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $examModel = new Exam();
@@ -519,7 +519,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $examModel = new Exam();
@@ -678,7 +678,7 @@ class LecturerController extends Controller
         $course = (new Course())->findOwned($courseId, $lecturerId);
         if ($course === null) {
             http_response_code(404);
-            exit('404. Course not found.');
+            exit('404. Subject not found.');
         }
 
         $examModel = new Exam();

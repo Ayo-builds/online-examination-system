@@ -22,11 +22,11 @@ $nav = [
     'admin' => [
         'dashboard' => ['admin/dashboard', 'Dashboard'],
         'users'     => ['admin/users',     'Users'],
-        'courses'   => ['admin/courses',   'Courses'],
+        'courses'   => ['admin/courses',   'Subjects'],
         'analytics' => ['admin/analytics', 'Analytics'],
     ],
     'lecturer' => [
-        'dashboard' => ['lecturer/dashboard', 'My courses'],
+        'dashboard' => ['lecturer/dashboard', 'My subjects'],
         'grading'   => ['lecturer/grading',   'Grading queue'],
     ],
     'student' => [
@@ -52,7 +52,7 @@ $home    = $links['dashboard'][0] ?? '';
         <span class="wordmark__text"><?= htmlspecialchars(APP_NAME) ?></span>
       </a>
       <?php if ($role !== ''): ?>
-        <span class="topbar__role"><?= htmlspecialchars($role) ?></span>
+        <span class="topbar__role"><?= htmlspecialchars(role_label($role)) ?></span>
       <?php endif; ?>
     </div>
 

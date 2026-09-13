@@ -20,9 +20,9 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
         <?php
         $cards = [
             'Active students'    => (int) $counts['students'],
-            'Active lecturers'   => (int) $counts['lecturers'],
+            'Active teachers'    => (int) $counts['lecturers'],
             'Suspended users'    => (int) $counts['suspended'],
-            'Courses'            => (int) $counts['courses'],
+            'Subjects'           => (int) $counts['courses'],
             'Questions in bank'  => (int) $counts['questions'],
             'Published exams'    => (int) $counts['published_exams'],
             'Draft exams'        => (int) $counts['draft_exams'],
@@ -82,14 +82,14 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
     </div>
     <?php endif; ?>
 
-    <h2 class="section">Courses</h2>
+    <h2 class="section">Subjects</h2>
     <div class="table-wrap">
         <table class="data-table">
             <thead>
                 <tr>
                     <th>Code</th>
                     <th>Title</th>
-                    <th>Lecturer</th>
+                    <th>Teacher</th>
                     <th class="right">Students</th>
                     <th class="right">Exams</th>
                     <th class="right">Attempts</th>

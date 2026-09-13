@@ -40,7 +40,7 @@ require __DIR__ . '/_partials/nav.php';
         <p>
           This is a web application for running written examinations inside an institution
           that already knows who its students are. An administrator enrols people onto
-          courses, lecturers write and assemble papers, students sit them under a clock,
+          subjects, teachers write and assemble papers, students sit them under a clock,
           and results come back with the working shown.
         </p>
         <p>
@@ -108,7 +108,7 @@ require __DIR__ . '/_partials/nav.php';
             <p class="principle__body">
               Everyone signs in at the same page. What changes is where you land and what
               the server will answer, enforced on every request and not hidden in a template.
-              A student who types a lecturer's URL is refused by the guard, not merely
+              A student who types a teacher's URL is refused by the guard, not merely
               shown a page missing its buttons.
             </p>
           </div>
@@ -192,7 +192,7 @@ require __DIR__ . '/_partials/nav.php';
         <p class="eyebrow">Already registered</p>
         <h2 class="cta__title">Sign in and pick up where your role starts.</h2>
         <p class="lead">
-          Students, lecturers and administrators all use the same sign-in page.
+          Students, teachers and administrators all use the same sign-in page.
         </p>
         <a class="btn btn--primary" href="<?= e(url(LOGIN_URL_PATH)) ?>">
           Sign in

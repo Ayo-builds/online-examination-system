@@ -34,7 +34,7 @@ class StudentController extends Controller
 
         if (!(new Enrollment())->isEnrolled($studentId, (int) $exam['course_id'])) {
             http_response_code(403);
-            exit('403. You are not enrolled in this course.');
+            exit('403. You are not enrolled in this subject.');
         }
 
         // An attempt already under way goes back to the paper; a finished one
@@ -81,7 +81,7 @@ class StudentController extends Controller
         // 2. The student must be enrolled in its course
         if (!(new Enrollment())->isEnrolled($studentId, (int) $exam['course_id'])) {
             http_response_code(403);
-            exit('403. You are not enrolled in this course.');
+            exit('403. You are not enrolled in this subject.');
         }
 
         // 3. The window must be open right now

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Courses · <?= APP_NAME ?></title>
+    <title>My Subjects · <?= APP_NAME ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
 <main class="shell shell--narrow">
 
 <?php
-$page_title = 'My courses';
+$page_title = 'My subjects';
 ob_start(); ?>
             <a class="btn btn--secondary btn--sm" href="<?= BASE_URL ?>lecturer/grading">Grading queue</a>
 <?php $page_actions = ob_get_clean();
@@ -20,8 +20,8 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <?php if (empty($courses)): ?>
         <div class="empty">
-            <p>No courses assigned yet.</p>
-            <p class="small stack-sm">An administrator assigns courses to lecturers.</p>
+            <p>No subjects assigned yet.</p>
+            <p class="small stack-sm">An administrator assigns subjects to teachers.</p>
         </div>
     <?php else: ?>
     <div class="table-wrap">

@@ -27,3 +27,23 @@ if (!function_exists('e')) {
         return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
     }
 }
+
+if (!function_exists('role_label')) {
+    /**
+     * The word a user sees for a stored role.
+     *
+     * The database, the routes and the classes keep 'lecturer'; the schools
+     * this serves say "Teacher". Render a role through this, never the raw
+     * value. See "Words users see" in AGENTS.md.
+     */
+    function role_label(string $role): string
+    {
+        $labels = [
+            'admin'    => 'Admin',
+            'lecturer' => 'Teacher',
+            'student'  => 'Student',
+        ];
+
+        return $labels[$role] ?? ucfirst($role);
+    }
+}
