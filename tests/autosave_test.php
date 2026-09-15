@@ -294,6 +294,20 @@ check('with the chosen option pre-selected',
 check('and the questions already answered are marked saved to the browser',
     strpos($res['body'], 'const initialSaved') !== false);
 
+// The guard's behaviour is tested in tests/clipboard_guard_test.mjs. What only
+// the served page can show is that the paper actually loads and runs it.
+check('the paper imports the clipboard guard',
+    strpos($res['body'], "assets/js/clipboard-guard.js'") !== false);
+check('and installs it on the document',
+    strpos($res['body'], 'installClipboardGuard(document);') !== false);
+check('essay boxes have spellcheck and autocomplete off',
+    (bool) preg_match('/<textarea[^>]*spellcheck="false"[^>]*autocomplete="off"/', $res['body']));
+
+$guard = http('GET', 'assets/js/clipboard-guard.js');
+same('the guard module is served', 200, $guard['status']);
+check('and it is the module, not a routed page',
+    strpos($guard['body'], 'export function installClipboardGuard') !== false);
+
 // The remaining time comes from the server, never the page's own clock.
 check('the remaining time is server-computed', (bool) preg_match('/const remaining = (\d+);/', $res['body'], $rm));
 $remaining = (int) ($rm[1] ?? 0);

@@ -1585,6 +1585,25 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
 .quiz-page .qbtn--ghost { background: #fff; color: var(--q-ink); border-color: var(--q-ink); }
 .quiz-page .qbtn--ghost:hover { background: #f0f3f8; color: var(--q-ink); }
 
+/* ---- nothing leaves the paper ----
+   Nothing on the page is selectable except the fields a candidate types
+   into. clipboard-guard.js blocks the same thing in script; this keeps the
+   selection highlight from appearing in the first place. */
+.quiz-page { -webkit-user-select: none; user-select: none; }
+.quiz-page textarea,
+.quiz-page input { -webkit-user-select: text; user-select: text; }
+
+/* The browser menu can still print. What comes out is this line, not the
+   paper. */
+@media print {
+  .quiz-page .quiz { display: none !important; }
+  .quiz-page::before {
+    content: "Printing is disabled during an exam.";
+    display: block;
+    padding: 2rem;
+  }
+}
+
 /* ---- question ---- */
 .quiz-page .question-card {
   display: grid; gap: 1rem;

@@ -94,6 +94,8 @@
                                 <textarea name="answer[<?= $qid ?>]"
                                           data-question="<?= $qid ?>"
                                           rows="8" placeholder="Type your answer&hellip;"
+                                          spellcheck="false" autocomplete="off"
+                                          autocorrect="off" autocapitalize="off"
                                           class="essay-input"><?= htmlspecialchars($q['essay_text'] ?? '') ?></textarea>
                             <?php endif; ?>
                         </div>
@@ -162,6 +164,10 @@
    <script type="module">
         import { createSaveQueue } from '<?= BASE_URL ?>assets/js/save-queue.js';
         import { renderQuestionState, renderBanner, LABELS } from '<?= BASE_URL ?>assets/js/save-status.js';
+        import { installClipboardGuard } from '<?= BASE_URL ?>assets/js/clipboard-guard.js';
+
+        // First, so nothing below can throw before the page is guarded.
+        installClipboardGuard(document);
 
         const remaining = <?= (int) $remaining ?>;
         const deadline  = Date.now() + remaining * 1000;
