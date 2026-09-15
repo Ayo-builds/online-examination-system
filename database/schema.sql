@@ -149,6 +149,13 @@ CREATE TABLE exam_attempts (
     -- after its deadline; NULL when the candidate's browser submitted it.
     -- See migration 006.
     closed_by_system_at DATETIME NULL,
+    -- Set while the attempt is paused, NULL while it is not. The pause itself
+    -- is the attempt_locks row with unlocked_at NULL. See migration 007.
+    locked_at DATETIME NULL,
+    -- SHA-256 of the seat cookie of the browser that last opened the paper.
+    seat_hash CHAR(64) NULL,
+    -- The last heartbeat from that browser. A gap is logged, never locked on.
+    last_seen_at DATETIME NULL,
     UNIQUE KEY one_attempt (exam_id, student_id),
     INDEX idx_attempts_sweep (status, deadline_at),
     FOREIGN KEY (exam_id) REFERENCES exams(id),
@@ -190,7 +197,113 @@ CREATE TABLE activity_logs (
     FOREIGN KEY (attempt_id) REFERENCES exam_attempts(id) ON DELETE CASCADE
 );
 
+-- activity_logs is the previous system's record: kept readable for past
+-- attempts, and written by nothing since migration 007.
 
+-- ============ LOCKS ============
+-- The pause-and-unlock record that replaced the flag threshold.
+--
+-- This server may not run in strict mode, and outside strict mode an ENUM
+-- quietly stores '' for a value it does not list. Every ENUM below is repeated
+-- as a CHECK, which MariaDB enforces in any mode, so a bad value is an error.
+--
+-- References to staff carry no ON DELETE action, which is RESTRICT: the record
+-- of who unlocked a paper must not vanish with the account. Staff are
+-- suspended, not deleted.
+--
+-- Each table names its engine and character set instead of inheriting them.
+-- The tables above take theirs from CREATE DATABASE, but a migration runs
+-- against whatever database already exists, and on a server that defaults to
+-- latin1 a bulk-unlock reason typed with ẹ or ọ would be stored as question
+-- marks.
+
+-- One bulk unlock from the invigilator screen. Each lock it released points
+-- here.
+CREATE TABLE bulk_unlocks (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    unlocked_by INT NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    lock_count INT NOT NULL,
+    created_at DATETIME NOT NULL,
+    CONSTRAINT fk_bulk_unlocks_user FOREIGN KEY (unlocked_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- One pause of one attempt, from the trigger that caused it to the unlock.
+-- detail is never NULL: it is created holding {"triggers":[first]}, and each
+-- later trigger is appended to that array.
+CREATE TABLE attempt_locks (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    attempt_id INT NOT NULL,
+    trigger_type ENUM('window_blur','tab_hidden','fullscreen_exit','new_session') NOT NULL,
+    detail JSON NOT NULL,
+    locked_at DATETIME NOT NULL,
+    claimed_by INT NULL,
+    claimed_at DATETIME NULL,
+    code_hash VARCHAR(255) NULL,
+    failed_tries TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    unlocked_at DATETIME NULL,
+    unlocked_by INT NULL,
+    unlock_method ENUM('code','bulk') NULL,
+    bulk_unlock_id BIGINT NULL,
+    -- The attempt while this lock is open, NULL once it is unlocked. Unique, so
+    -- the database itself refuses a second open lock on one attempt, while any
+    -- number of closed ones can sit alongside. VIRTUAL rather than stored:
+    -- MySQL forbids a cascading foreign key on the base column of a stored
+    -- generated column, and attempt_id cascades.
+    open_attempt_id INT AS (IF(unlocked_at IS NULL, attempt_id, NULL)) VIRTUAL,
+    UNIQUE KEY uq_attempt_locks_one_open (open_attempt_id),
+    INDEX idx_attempt_locks_attempt (attempt_id, unlocked_at),
+    INDEX idx_attempt_locks_open (unlocked_at),
+    CONSTRAINT fk_attempt_locks_attempt FOREIGN KEY (attempt_id)
+        REFERENCES exam_attempts(id) ON DELETE CASCADE,
+    CONSTRAINT fk_attempt_locks_claimed_by FOREIGN KEY (claimed_by) REFERENCES users(id),
+    CONSTRAINT fk_attempt_locks_unlocked_by FOREIGN KEY (unlocked_by) REFERENCES users(id),
+    CONSTRAINT fk_attempt_locks_bulk FOREIGN KEY (bulk_unlock_id) REFERENCES bulk_unlocks(id),
+    CONSTRAINT chk_attempt_locks_trigger
+        CHECK (trigger_type IN ('window_blur','tab_hidden','fullscreen_exit','new_session')),
+    CONSTRAINT chk_attempt_locks_method
+        CHECK (unlock_method IS NULL OR unlock_method IN ('code','bulk'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Everything worth knowing that is not a lock: short blurs, heartbeat gaps,
+-- pastes that got through, typing bursts, and each staff action on a lock.
+CREATE TABLE attempt_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    attempt_id INT NOT NULL,
+    lock_id BIGINT NULL,
+    event_type ENUM('blur_blip','heartbeat_gap','paste_landed','bulk_insert','typing_burst',
+                    'value_jump','claim','reclaim','code_failed','code_exhausted','superseded') NOT NULL,
+    actor_id INT NULL,
+    detail JSON NULL,
+    created_at DATETIME NOT NULL,
+    INDEX idx_attempt_events_attempt (attempt_id, created_at),
+    CONSTRAINT fk_attempt_events_attempt FOREIGN KEY (attempt_id)
+        REFERENCES exam_attempts(id) ON DELETE CASCADE,
+    CONSTRAINT fk_attempt_events_lock FOREIGN KEY (lock_id)
+        REFERENCES attempt_locks(id) ON DELETE CASCADE,
+    CONSTRAINT fk_attempt_events_actor FOREIGN KEY (actor_id) REFERENCES users(id),
+    CONSTRAINT chk_attempt_events_type
+        CHECK (event_type IN ('blur_blip','heartbeat_gap','paste_landed','bulk_insert','typing_burst',
+                              'value_jump','claim','reclaim','code_failed','code_exhausted','superseded'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Blocked copy, paste and the rest, counted rather than listed: twenty presses
+-- of Ctrl+V are one row with count 20.
+CREATE TABLE attempt_blocked_actions (
+    attempt_id INT NOT NULL,
+    action ENUM('copy','cut','paste','drop','drag','context_menu','print','save','replace') NOT NULL,
+    route ENUM('keyboard','mouse','other') NOT NULL,
+    count INT UNSIGNED NOT NULL,
+    first_at DATETIME NOT NULL,
+    last_at DATETIME NOT NULL,
+    PRIMARY KEY (attempt_id, action, route),
+    CONSTRAINT fk_blocked_actions_attempt FOREIGN KEY (attempt_id)
+        REFERENCES exam_attempts(id) ON DELETE CASCADE,
+    CONSTRAINT chk_blocked_actions_action
+        CHECK (action IN ('copy','cut','paste','drop','drag','context_menu','print','save','replace')),
+    CONSTRAINT chk_blocked_actions_route
+        CHECK (route IN ('keyboard','mouse','other'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE login_attempts (
     identifier VARCHAR(150) NOT NULL,
