@@ -7,7 +7,19 @@
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 </head>
 <body class="quiz-page">
-    <main class="quiz">
+    <?php /* No question or option text is anywhere in this file. The paper
+             arrives from student/paper/{id} after the fullscreen gate, and is
+             drawn into #question-list by public/assets/js/paper-render.js.
+             Everything below stays hidden unless JavaScript runs, so a
+             candidate without it sees only this notice. */ ?>
+    <noscript>
+        <div class="quiz-noscript">
+            <h1>This exam requires JavaScript.</h1>
+            <p>Turn JavaScript on for this site, then reload the page.</p>
+        </div>
+    </noscript>
+
+    <main class="quiz" id="exam-app" hidden>
 
         <header class="quiz__head">
             <span class="quiz__icon" aria-hidden="true">
@@ -34,6 +46,16 @@
 
             <div class="quiz__panel">
 
+                <section id="exam-gate" class="quiz-gate" aria-labelledby="gate-title">
+                    <h2 id="gate-title">Your exam runs in fullscreen</h2>
+                    <p>Your questions appear once the screen is in fullscreen. Your time is already running.</p>
+                    <p id="gate-message" class="quiz-gate__message" role="alert" hidden></p>
+                    <div class="quiz-gate__actions">
+                        <button type="button" id="gate-enter" class="qbtn qbtn--primary">Enter fullscreen</button>
+                        <button type="button" id="gate-retry" class="qbtn qbtn--ghost" hidden>Retry</button>
+                    </div>
+                </section>
+
                 <?php /* Answers the browser still has outstanding at submit time.
                          Kept current by the save queue. It never blocks the
                          submission: a failed save must not become a zero. */ ?>
@@ -44,68 +66,13 @@
                     <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
                     <input type="hidden" name="unsaved_count" id="unsaved-count" value="0">
 
-                    <div id="quiz-questions">
+                    <div id="quiz-questions" hidden>
 
-                    <a class="qbtn qbtn--ghost" href="<?= BASE_URL ?>student/dashboard">Back</a>
+                        <div id="question-list"></div>
 
-                    <?php foreach ($questions as $q): ?>
-                    <?php $qid = (int) $q['question_id']; $num = (int) $q['display_order']; ?>
-                    <div class="question-card" id="q<?= $num ?>"
-                         data-question-id="<?= $qid ?>" data-qnum="<?= $num ?>">
-
-                        <div class="question-card__meta">
-                            <p class="qmeta__num">Question <b><?= $num ?></b></p>
-                            <?php /* Written ONLY from what the server said about this
-                                     answer. See public/assets/js/save-status.js. */ ?>
-                            <p class="qmeta__state qmeta__state--clean">Not yet answered</p>
-                            <p class="qmeta__marks">Marked out of <?= htmlspecialchars($q['marks']) ?></p>
-                            <button type="button" class="qmeta__flag"
-                                    data-flag="<?= $num ?>" aria-pressed="false">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-                                    <line x1="4" y1="22" x2="4" y2="15"></line>
-                                </svg>
-                                Flag question
-                            </button>
+                        <div class="quiz__finish">
+                            <button type="button" id="to-summary" class="qbtn qbtn--primary">Finish attempt &hellip;</button>
                         </div>
-
-                        <div class="question-card__body">
-                            <p class="question-card__text">
-                                <?= nl2br(htmlspecialchars($q['question_text'])) ?>
-                            </p>
-
-                            <?php if ($q['question_type'] === 'mcq'): ?>
-                                <p class="qbody__select">Select one:</p>
-                                <div class="opts">
-                                    <?php foreach ($q['options'] as $i => $opt): ?>
-                                    <label class="opt">
-                                        <input type="radio"
-                                               name="answer[<?= $qid ?>]"
-                                               value="<?= (int) $opt['id'] ?>"
-                                               data-question="<?= $qid ?>"
-                                               <?= (int) $q['selected_option_id'] === (int) $opt['id'] ? 'checked' : '' ?>>
-                                        <span class="opt__letter"><?= chr(97 + $i) ?>.</span>
-                                        <span class="opt__text"><?= htmlspecialchars($opt['text']) ?></span>
-                                    </label>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php else: ?>
-                                <textarea name="answer[<?= $qid ?>]"
-                                          data-question="<?= $qid ?>"
-                                          rows="8" placeholder="Type your answer&hellip;"
-                                          spellcheck="false" autocomplete="off"
-                                          autocorrect="off" autocapitalize="off"
-                                          class="essay-input"><?= htmlspecialchars($q['essay_text'] ?? '') ?></textarea>
-                            <?php endif; ?>
-                        </div>
-
-                    </div>
-                    <?php endforeach; ?>
-
-                    <div class="quiz__finish">
-                        <button type="button" id="to-summary" class="qbtn qbtn--primary">Finish attempt &hellip;</button>
-                    </div>
 
                     </div><!-- /#quiz-questions -->
 
@@ -140,21 +107,11 @@
             <aside class="quiz__nav" aria-label="Quiz navigation">
                 <h2>Quiz navigation</h2>
 
-                <div class="qnav__grid">
-                    <?php foreach ($questions as $q): ?>
-                    <?php $n = (int) $q['display_order']; ?>
-                    <a class="qnav__box" href="#q<?= $n ?>" data-nav="<?= $n ?>"><?= $n ?></a>
-                    <?php endforeach; ?>
-                </div>
+                <div class="qnav__grid" id="qnav-grid"></div>
 
                 <div class="qnav__meta">
                     <p class="qnav__label">Time remaining</p>
                     <div id="timer">--:--</div>
-
-                    <button type="button" id="fs-btn"
-                        onclick="document.documentElement.requestFullscreen &amp;&amp; document.documentElement.requestFullscreen()">
-                        Enter fullscreen
-                    </button>
                 </div>
             </aside>
 
@@ -165,32 +122,30 @@
         import { createSaveQueue } from '<?= BASE_URL ?>assets/js/save-queue.js';
         import { renderQuestionState, renderBanner, LABELS } from '<?= BASE_URL ?>assets/js/save-status.js';
         import { installClipboardGuard } from '<?= BASE_URL ?>assets/js/clipboard-guard.js';
+        import { openPaper, renderPaper, savedQuestionIds } from '<?= BASE_URL ?>assets/js/paper-render.js';
 
         // First, so nothing below can throw before the page is guarded.
         installClipboardGuard(document);
 
+        document.getElementById('exam-app').hidden = false;
+
         const remaining = <?= (int) $remaining ?>;
-        const deadline  = Date.now() + remaining * 1000;
+        let   deadline  = Date.now() + remaining * 1000;
         const timerEl   = document.getElementById('timer');
         const form      = document.getElementById('exam-form');
         const bannerEl  = document.getElementById('save-banner');
         const countEl   = document.getElementById('unsaved-count');
         const saveUrl   = '<?= BASE_URL ?>student/saveAnswer/<?= (int) $attempt['id'] ?>';
+        const paperUrl  = '<?= BASE_URL ?>student/paper/<?= (int) $attempt['id'] ?>';
         let   csrf      = form.querySelector('input[name="csrf_token"]').value;
 
-        // Answers already on the server when this page was rendered. On a
-        // resume these came back out of the database, so they are genuinely
-        // saved and may honestly say so before anything is typed.
-        const initialSaved = new Set(<?= json_encode(array_values(array_map(
-            fn($q) => (int) $q['question_id'],
-            array_filter(
-                $questions,
-                fn($q) => $q['selected_option_id'] !== null
-                       || ($q['essay_text'] !== null && trim($q['essay_text']) !== '')
-            )
-        ))) ?>);
+        // Answers the server already held when the paper arrived. On a resume
+        // these came back out of the database, so they are genuinely saved and
+        // may honestly say so before anything is typed. Filled by showPaper().
+        let initialSaved = new Set();
 
         // ---- Timer ----
+        // Running from the moment the page loads, gate included.
         function tick() {
             const secs = Math.max(0, Math.round((deadline - Date.now()) / 1000));
             const m = String(Math.floor(secs / 60)).padStart(2, '0');
@@ -210,11 +165,9 @@
         // authority; only a 200 from the server produces that word.
 
         // The queue keys by question id, but a student thinks in the numbers
-        // printed on the paper, so the banner has to translate.
+        // printed on the paper, so the banner has to translate. Filled by
+        // showPaper().
         const numById = new Map();
-        document.querySelectorAll('.question-card').forEach(card => {
-            numById.set(Number(card.dataset.questionId), Number(card.dataset.qnum));
-        });
 
         let sessionExpired = false;
 
@@ -250,7 +203,7 @@
 
         // What a question's status line should say right now: the queue's view
         // once it has one, and otherwise whether the server had an answer when
-        // this page was built.
+        // the paper arrived.
         function displayState(qid) {
             const s = queue.stateOf(qid);
             if (s !== queue.STATES.CLEAN) return s;
@@ -307,26 +260,29 @@
             bannerEl.appendChild(btn);
         }
 
+        // Answers are listened for on the form, not on each input, because the
+        // inputs do not exist until the paper has been drawn.
+
         // MCQ radios: save immediately on change
-        document.querySelectorAll('input[type=radio][data-question]').forEach(r => {
-            r.addEventListener('change', () => {
-                queue.saveNow(Number(r.dataset.question), {
-                    csrf_token:  csrf,
-                    question_id: r.dataset.question,
-                    option_id:   r.value,
-                });
+        form.addEventListener('change', (e) => {
+            const r = e.target;
+            if (r.type !== 'radio' || !r.dataset.question) return;
+            queue.saveNow(Number(r.dataset.question), {
+                csrf_token:  csrf,
+                question_id: r.dataset.question,
+                option_id:   r.value,
             });
         });
 
         // Essays: debounced, with the queue's ceiling behind it so steady
         // typing cannot outrun the save the way it used to.
-        document.querySelectorAll('textarea[data-question]').forEach(t => {
-            t.addEventListener('input', () => {
-                queue.saveDebounced(Number(t.dataset.question), {
-                    csrf_token:  csrf,
-                    question_id: t.dataset.question,
-                    essay_text:  t.value,
-                });
+        form.addEventListener('input', (e) => {
+            const t = e.target;
+            if (t.tagName !== 'TEXTAREA' || !t.dataset.question) return;
+            queue.saveDebounced(Number(t.dataset.question), {
+                csrf_token:  csrf,
+                question_id: t.dataset.question,
+                essay_text:  t.value,
             });
         });
 
@@ -338,12 +294,75 @@
             if (document.hidden) queue.flush();
         });
 
-        paint();
+        // ---------- The gate ----------
+        // Nothing about the paper is requested until the screen is in
+        // fullscreen. See openPaper() for what each failure does.
+        const gateEl       = document.getElementById('exam-gate');
+        const gateMessage  = document.getElementById('gate-message');
+        const gateEnter    = document.getElementById('gate-enter');
+        const gateRetry    = document.getElementById('gate-retry');
+        const questionsWrap = document.getElementById('quiz-questions');
+
+        function gateSay(text, offerRetry) {
+            gateMessage.textContent = text;
+            gateMessage.hidden = false;
+            gateRetry.hidden = !offerRetry;
+        }
+
+        async function loadPaper() {
+            const body = new URLSearchParams();
+            body.append('csrf_token', csrf);
+            const res = await fetch(paperUrl, { method: 'POST', body, cache: 'no-store' });
+
+            // The login page, or any other HTML, is no body at all.
+            let parsed = null;
+            try { parsed = await res.json(); } catch (e) { parsed = null; }
+            return { status: res.status, body: parsed };
+        }
+
+        function showPaper(paper) {
+            renderPaper(document, document.getElementById('question-list'),
+                        document.getElementById('qnav-grid'), paper.questions);
+
+            // The server's clock, fresh, rather than the one this page loaded with.
+            deadline = Date.now() + paper.remaining * 1000;
+
+            initialSaved = savedQuestionIds(paper.questions);
+            document.querySelectorAll('.question-card').forEach(card => {
+                numById.set(Number(card.dataset.questionId), Number(card.dataset.qnum));
+            });
+
+            gateEl.hidden = true;
+            questionsWrap.hidden = false;
+            paint();
+            paintFlags();
+        }
+
+        async function passGate() {
+            gateEnter.disabled = true;
+            gateRetry.disabled = true;
+            try {
+                await openPaper({
+                    requestFullscreen: () => document.documentElement.requestFullscreen(),
+                    fullscreenElement: () => document.fullscreenElement,
+                    loadPaper,
+                    onPaper: showPaper,
+                    onRefused: () => gateSay('The screen did not go fullscreen. Press Enter fullscreen to try again.', false),
+                    onNetworkFailure: () => gateSay('Your questions could not be loaded. Check the network cable, then press Retry.', true),
+                    reload: () => location.reload(),
+                });
+            } finally {
+                gateEnter.disabled = false;
+                gateRetry.disabled = false;
+            }
+        }
+
+        gateEnter.addEventListener('click', passGate);
+        gateRetry.addEventListener('click', passGate);
 
         // ---------- Summary of attempt ----------
         // A view over the same form, not a separate page. Hiding the questions
         // leaves their inputs in the form, so the submission is unchanged.
-        const questionsWrap = document.getElementById('quiz-questions');
         const summaryEl     = document.getElementById('quiz-summary');
         const summaryRows   = document.getElementById('summary-rows');
 
@@ -395,15 +414,15 @@
                 if (box) box.classList.toggle('qnav__box--flagged', on);
             });
         }
-        document.querySelectorAll('[data-flag]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const n = btn.dataset.flag;
-                flags = flags.includes(n) ? flags.filter(x => x !== n) : flags.concat(n);
-                try { localStorage.setItem(flagKey, JSON.stringify(flags)); } catch (e) {}
-                paintFlags();
-            });
+        // On the list, because the flag buttons arrive with the paper.
+        document.getElementById('question-list').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-flag]');
+            if (!btn) return;
+            const n = btn.dataset.flag;
+            flags = flags.includes(n) ? flags.filter(x => x !== n) : flags.concat(n);
+            try { localStorage.setItem(flagKey, JSON.stringify(flags)); } catch (e) {}
+            paintFlags();
         });
-        paintFlags();
 
       // ---------- Anti-cheat monitor ----------
         const logUrl = '<?= BASE_URL ?>student/logActivity/<?= (int) $attempt['id'] ?>';

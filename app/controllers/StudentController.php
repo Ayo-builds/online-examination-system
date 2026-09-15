@@ -110,8 +110,15 @@ class StudentController extends Controller
     }
 
      // GET /student/exam/{attemptId}
+    //
+    // The page around the paper, not the paper. No question or option text is
+    // in this response: the page fetches it from paper() once the candidate
+    // is in fullscreen. With JavaScript off, all anyone sees is a notice.
     public function exam(string $attemptId = ''): void
     {
+        // Never restored from the browser's cache by Back or Forward.
+        header('Cache-Control: no-store');
+
         $attemptId = (int) $attemptId;
         $studentId = (int) Auth::user()['id'];
 
@@ -136,8 +143,64 @@ class StudentController extends Controller
 
         $this->view('student/exam', [
             'attempt'   => $attempt,
-            'questions' => $attemptModel->questionsForAttempt($attemptId),
             'remaining' => strtotime($attempt['deadline_at']) - time(),  // seconds left
+        ]);
+    }
+
+    // POST /student/paper/{attemptId}. AJAX, returns JSON
+    //
+    // The only route by which question text reaches a browser. POST with the
+    // CSRF token rather than GET, so the paper cannot be read by typing this
+    // URL into the address bar with JavaScript turned off.
+    //
+    // Only what the candidate's page draws is sent. option_order has already
+    // been applied, and nothing that marks an option correct is selected.
+    public function paper(string $attemptId = ''): void
+    {
+        header('Cache-Control: no-store');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->json(['ok' => false, 'error' => 'method'], 405);
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->json(['ok' => false, 'error' => 'csrf'], 403);
+        }
+
+        $attemptId = (int) $attemptId;
+        $studentId = (int) Auth::user()['id'];
+
+        $attemptModel = new Attempt();
+        $attempt = $attemptModel->findOwned($attemptId, $studentId);
+
+        if ($attempt === null) {
+            $this->json(['ok' => false, 'error' => 'not_found'], 404);
+        }
+        if ($attempt['status'] !== 'in_progress') {
+            $this->json(['ok' => false, 'error' => 'closed'], 409);
+        }
+
+        // Past the deadline: close it here, exactly as exam() would, rather
+        // than handing out a paper nobody may still answer.
+        if (strtotime($attempt['deadline_at']) <= time()) {
+            $attemptModel->autoSubmit($attemptId);
+            $this->json(['ok' => false, 'error' => 'closed'], 409);
+        }
+
+        $questions = array_map(static fn(array $q): array => [
+            'question_id'        => (int) $q['question_id'],
+            'display_order'      => (int) $q['display_order'],
+            'question_type'      => $q['question_type'],
+            'question_text'      => $q['question_text'],
+            'marks'              => $q['marks'],
+            'options'            => $q['options'],
+            'selected_option_id' => $q['selected_option_id'] === null ? null : (int) $q['selected_option_id'],
+            'essay_text'         => $q['essay_text'],
+        ], $attemptModel->questionsForAttempt($attemptId));
+
+        $this->json([
+            'ok'        => true,
+            'remaining' => strtotime($attempt['deadline_at']) - time(),
+            'questions' => $questions,
         ]);
     }
 

@@ -4,8 +4,9 @@
  * without Apache and without config/config.php.
  *
  * The suites start and stop their own server through test_start_server() in
- * tests/bootstrap.php - autosave_test.php on 8099, sweep_test.php on 8098 -
- * and each refuses to run if its port is already taken.
+ * tests/bootstrap.php - autosave_test.php on 8099, sweep_test.php on 8098,
+ * paper_test.php on 8097 - and each refuses to run if its port is already
+ * taken.
  *
  * To serve the test app by hand, use a port the suites do not claim, and stop
  * the server when you are done with it:
@@ -13,7 +14,7 @@
  *   bash:        EXAM_CONFIG=config/config.test.php php -S 127.0.0.1:8199 -t public tests/router.php
  *   PowerShell:  $env:EXAM_CONFIG = 'config/config.test.php'; php -S 127.0.0.1:8199 -t public tests/router.php
  *
- * Never 8098 or 8099. This recipe used to name 8099; a server started from it
+ * Never 8097, 8098 or 8099. This recipe used to name 8099; a server started from it
  * was left running from 9 to 11 Sep 2026, and autosave_test.php passed against
  * that stranger for two days without ever starting its own.
  *

@@ -1604,6 +1604,36 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   }
 }
 
+/* This stylesheet sets display on most quiz blocks, and any display rule
+   beats the browser's own [hidden]. The runner shows and hides whole blocks
+   with the attribute, so it has to win. */
+.quiz-page [hidden] { display: none !important; }
+
+/* ---- without JavaScript ---- */
+.quiz-noscript {
+  max-width: 40rem; margin: 4rem auto; padding: 1.5rem;
+  background: var(--q-surface); border: 1px solid var(--q-line);
+  border-left: 3px solid var(--q-ink); border-radius: var(--q-radius-panel);
+}
+.quiz-noscript h1 { font-size: 1.4rem; color: var(--q-ink); margin: 0 0 0.5rem; }
+.quiz-noscript p { margin: 0; }
+
+/* ---- fullscreen gate ---- */
+.quiz-gate {
+  background: var(--q-surface);
+  border: 1px solid var(--q-line);
+  border-radius: var(--q-radius-panel);
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+.quiz-page .quiz-gate h2 {
+  font-family: inherit; font-size: 1.35rem; font-weight: 700;
+  color: var(--q-ink); margin: 0 0 0.5rem;
+}
+.quiz-gate p { margin: 0 0 1.25rem; }
+.quiz-gate__message { color: #b3261e; font-weight: 600; }
+.quiz-gate__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; }
+
 /* ---- question ---- */
 .quiz-page .question-card {
   display: grid; gap: 1rem;
@@ -1654,6 +1684,7 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   line-height: 1.571;
   color: var(--q-body);
   margin: 0 0 2rem;
+  white-space: pre-line;   /* the line breaks nl2br used to print */
 }
 .quiz-page .qbody__select { font-size: 1rem; color: var(--q-body); margin: 0 0 0.6rem; }
 

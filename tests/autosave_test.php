@@ -285,28 +285,37 @@ same('the refetched token actually saves', 200, $res['status']);
 section('Resume');
 
 $res = http('GET', 'student/exam/' . $attemptId);
-same('the paper loads', 200, $res['status']);
-check('with the saved essay text in the textarea',
-    strpos($res['body'], 'Saved with the refetched token.') !== false);
-check('with the chosen option pre-selected',
-    (bool) preg_match('/value="' . $correctOptionId . '"[^>]*checked/', $res['body'])
-    || (bool) preg_match('/checked[^>]*value="' . $correctOptionId . '"/', $res['body']));
-check('and the questions already answered are marked saved to the browser',
-    strpos($res['body'], 'const initialSaved') !== false);
+same('the exam page loads', 200, $res['status']);
+
+// The answers come back with the paper, not in the page. How that JSON is
+// drawn is tests/paper_render_test.mjs; the endpoint itself is
+// tests/paper_test.php.
+$paper = http('POST', 'student/paper/' . $attemptId, ['csrf_token' => $token]);
+same('the paper loads', 200, $paper['status']);
+$held = [];
+foreach ($paper['json']['questions'] ?? [] as $q) {
+    $held[(int) $q['question_id']] = $q;
+}
+same('with the saved essay text',
+    'Saved with the refetched token.', $held[$essayId]['essay_text'] ?? null);
+same('with the chosen option',
+    $correctOptionId, $held[$mcqId]['selected_option_id'] ?? null);
 
 // The guard's behaviour is tested in tests/clipboard_guard_test.mjs. What only
 // the served page can show is that the paper actually loads and runs it.
-check('the paper imports the clipboard guard',
+check('the page imports the clipboard guard',
     strpos($res['body'], "assets/js/clipboard-guard.js'") !== false);
 check('and installs it on the document',
     strpos($res['body'], 'installClipboardGuard(document);') !== false);
-check('essay boxes have spellcheck and autocomplete off',
-    (bool) preg_match('/<textarea[^>]*spellcheck="false"[^>]*autocomplete="off"/', $res['body']));
+check('the page imports the paper renderer',
+    strpos($res['body'], "assets/js/paper-render.js'") !== false);
 
-$guard = http('GET', 'assets/js/clipboard-guard.js');
-same('the guard module is served', 200, $guard['status']);
-check('and it is the module, not a routed page',
-    strpos($guard['body'], 'export function installClipboardGuard') !== false);
+foreach (['clipboard-guard.js' => 'installClipboardGuard', 'paper-render.js' => 'renderPaper'] as $file => $export) {
+    $module = http('GET', 'assets/js/' . $file);
+    same("$file is served", 200, $module['status']);
+    check("and it is the module, not a routed page",
+        strpos($module['body'], "export function $export") !== false);
+}
 
 // The remaining time comes from the server, never the page's own clock.
 check('the remaining time is server-computed', (bool) preg_match('/const remaining = (\d+);/', $res['body'], $rm));
