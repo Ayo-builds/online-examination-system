@@ -71,7 +71,10 @@ if ($ended !== null) {
                                          system closed the paper (Attempt::autoSubmit). A
                                          browser that did submit at the deadline keeps the
                                          wording below. */ ?>
-                                <?php if ($attempt['closed_by_system_at'] !== null): ?>
+                                <?php if ($attempt['closed_by_system_at'] !== null && $attempt['locked_at'] !== null): ?>
+                                    Closed while paused. Time ran out while your exam was
+                                    paused; the answers saved before the pause were counted.
+                                <?php elseif ($attempt['closed_by_system_at'] !== null): ?>
                                     Closed by the system after time ran out. No submission
                                     was received; the answers saved before then were counted.
                                 <?php elseif ($attempt['status'] === 'auto_submitted'): ?>

@@ -14,7 +14,7 @@
 <?php
 $page_title = htmlspecialchars($attempt['student_name']);
 $page_lead_class = 'small';
-ob_start(); ?><?php $student = $attempt; require APP_ROOT . '/app/views/_partials/student_identity.php'; ?> &middot; <?= htmlspecialchars($attempt['course_code']) ?> / <?= htmlspecialchars($attempt['exam_title']) ?> &middot; <?= $attempt['closed_by_system_at'] !== null ? 'not submitted, closed at deadline' : 'submitted' ?> <?= htmlspecialchars($attempt['submitted_at']) ?><?php $page_lead = ob_get_clean();
+ob_start(); ?><?php $student = $attempt; require APP_ROOT . '/app/views/_partials/student_identity.php'; ?> &middot; <?= htmlspecialchars($attempt['course_code']) ?> / <?= htmlspecialchars($attempt['exam_title']) ?> &middot; <?= $attempt['closed_by_system_at'] === null ? 'submitted' : ($attempt['locked_at'] !== null ? 'closed while paused' : 'not submitted, closed at deadline') ?> <?= htmlspecialchars($attempt['submitted_at']) ?><?php $page_lead = ob_get_clean();
 require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
 
     <div class="grid grid--2">
@@ -42,7 +42,18 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
              was on their screen, so unsaved_at_submit is 0 here because nobody
              was there to count, not because nothing was lost. See
              Attempt::autoSubmit() and migration 006. */ ?>
-    <?php if ($attempt['closed_by_system_at'] !== null): ?>
+    <?php if ($attempt['closed_by_system_at'] !== null && $attempt['locked_at'] !== null): ?>
+    <div class="alert alert--warn stack-md">
+        <strong>Closed while paused.</strong>
+        This candidate's exam was paused at <?= htmlspecialchars($attempt['locked_at']) ?>
+        and was not unlocked before the deadline at
+        <?= htmlspecialchars($attempt['deadline_at']) ?>, so they could not submit
+        it. The system closed the paper at
+        <?= htmlspecialchars($attempt['closed_by_system_at']) ?>. Only answers saved
+        before the pause, or within a few seconds of it, are shown and marked.
+        Worth checking with the invigilator before releasing the result.
+    </div>
+    <?php elseif ($attempt['closed_by_system_at'] !== null): ?>
     <div class="alert alert--warn stack-md">
         <strong>No submission was received from this candidate.</strong>
         The deadline passed at <?= htmlspecialchars($attempt['deadline_at']) ?>

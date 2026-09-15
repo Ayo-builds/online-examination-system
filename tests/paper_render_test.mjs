@@ -206,6 +206,7 @@ function gate(overrides = {}) {
         onPaper: () => calls.push('paper'),
         onRefused: () => calls.push('refused'),
         onNetworkFailure: () => calls.push('retry'),
+        onLocked: () => calls.push('locked'),
         reload: () => calls.push('reload'),
         ...overrides,
     };
@@ -271,6 +272,14 @@ test('a dead CSRF token reloads the page instead of offering Retry', async () =>
     assert.deepEqual(calls, ['fullscreen', 'reload']);
 });
 
+test('a paused attempt says so at the gate, without reloading or offering Retry', async () => {
+    const { deps, calls } = gate({
+        loadPaper: async () => { calls.push('load'); return { status: 423, body: { ok: false, error: 'locked' } }; },
+    });
+    assert.equal(await openPaper(deps), 'locked');
+    assert.deepEqual(calls, ['fullscreen', 'load', 'locked']);
+});
+
 test('every stale-page answer reloads, and only real server failures retry', () => {
     const cases = [
         [{ status: 200, body: { ok: true, questions: [] } },          'ok'],
@@ -280,6 +289,9 @@ test('every stale-page answer reloads, and only real server failures retry', () 
         [{ status: 403, body: { ok: false, error: 'csrf' } },         'reload'],
         [{ status: 404, body: { ok: false, error: 'not_found' } },    'reload'],
         [{ status: 409, body: { ok: false, error: 'closed' } },       'reload'],
+        [{ status: 423, body: { ok: false, error: 'locked' } },       'locked'],
+        [{ status: 423, body: { ok: false } },                        'reload'],   // not a pause we know
+        [{ status: 423, body: null },                                 'reload'],
         [{ status: 200, body: { ok: false } },                        'reload'],
         [{ status: 200, body: { ok: true } },                         'reload'],   // no questions
         [{ status: 500, body: { ok: false } },                        'retry'],

@@ -25,8 +25,12 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
  * What to do with the paper endpoint's answer.
  *
  *   'ok'     draw it
+ *   'locked' the attempt is paused; nothing is drawn until it is unlocked
  *   'retry'  the server is there but failed; trying again can help
  *   'reload' anything else: the page itself is stale
+ *
+ * A pause is not a stale page. Reloading would only ask again and be told the
+ * same thing, so it gets its own answer.
  *
  * A body that is not JSON is almost always an expired session answered with
  * the login page, and a 403 is a dead CSRF token. Retrying either sends the
@@ -38,13 +42,14 @@ export function paperOutcome(res) {
     const body = res && res.body;
     if (body === null || typeof body !== 'object') return 'reload';
     if (res.status === 200 && body.ok === true && Array.isArray(body.questions)) return 'ok';
+    if (res.status === 423 && body.error === 'locked') return 'locked';
     if (res.status >= 500) return 'retry';
     return 'reload';
 }
 
 /**
  * Enter fullscreen, then fetch the paper. Resolves to what happened:
- * 'ok', 'refused', 'retry' or 'reload'.
+ * 'ok', 'refused', 'locked', 'retry' or 'reload'.
  *
  * The fetch waits for fullscreen to be both granted and actually in force.
  * Nothing about the paper is requested before that.
@@ -72,6 +77,7 @@ export async function openPaper(deps) {
 
     const outcome = paperOutcome(res);
     if (outcome === 'ok')     deps.onPaper(res.body);
+    if (outcome === 'locked') deps.onLocked();
     if (outcome === 'retry')  deps.onNetworkFailure();
     if (outcome === 'reload') deps.reload();
     return outcome;

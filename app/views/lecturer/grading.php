@@ -65,8 +65,13 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                         <?= htmlspecialchars($a['submitted_at']) ?>
                         <?php /* Nobody pressed Submit: the deadline passed and the
                                  system closed the paper. The time above is the
-                                 deadline. See Attempt::autoSubmit(). */ ?>
-                        <?php if ($a['closed_by_system_at'] !== null): ?>
+                                 deadline. A paper still paused when that happened
+                                 says so, because the candidate could not have
+                                 submitted it. See Attempt::autoSubmit(). */ ?>
+                        <?php if ($a['closed_by_system_at'] !== null && $a['locked_at'] !== null): ?>
+                            <br><span class="tag tag--warn"
+                                      title="Paused at <?= htmlspecialchars($a['locked_at']) ?>, closed by the system at <?= htmlspecialchars($a['closed_by_system_at']) ?>">Closed while paused</span>
+                        <?php elseif ($a['closed_by_system_at'] !== null): ?>
                             <br><span class="tag tag--warn"
                                       title="Closed by the system at <?= htmlspecialchars($a['closed_by_system_at']) ?>">Not submitted</span>
                         <?php endif; ?>

@@ -189,8 +189,9 @@ if (!$enrolments->isEnrolled($studentId, $subjectId)) {
 //
 // Everything below is scoped to the HANDCHECK Subject. Attempts go first: they
 // reference the exam and the questions without cascading. Deleting an attempt
-// cascades to its frozen paper, its answers and its activity log; deleting an
-// exam cascades to its pool; deleting a question cascades to its options.
+// cascades to its frozen paper, its answers, its activity log, and its pauses,
+// events and blocked-action counts; deleting an exam cascades to its pool;
+// deleting a question cascades to its options.
 
 $db->beginTransaction();
 try {
@@ -200,12 +201,39 @@ try {
 
     $removedAttempts = 0;
     $removedExams    = 0;
+    $removedChildren = ['attempt_locks' => 0, 'attempt_events' => 0, 'attempt_blocked_actions' => 0];
     if ($examIds !== []) {
         $in = implode(',', array_fill(0, count($examIds), '?'));
+
+        // Counted before and checked after, so a cascade that stopped working
+        // shows up here rather than as rows quietly left behind.
+        $childCount = static function (string $table) use ($db, $in, $examIds): int {
+            $stmt = $db->prepare("SELECT COUNT(*) FROM $table
+                                   WHERE attempt_id IN (SELECT id FROM exam_attempts WHERE exam_id IN ($in))");
+            $stmt->execute($examIds);
+            return (int) $stmt->fetchColumn();
+        };
+        foreach (array_keys($removedChildren) as $table) {
+            $removedChildren[$table] = $childCount($table);
+        }
+        $attemptIds = $db->prepare("SELECT id FROM exam_attempts WHERE exam_id IN ($in)");
+        $attemptIds->execute($examIds);
+        $attemptIds = $attemptIds->fetchAll(PDO::FETCH_COLUMN);
 
         $del = $db->prepare("DELETE FROM exam_attempts WHERE exam_id IN ($in)");
         $del->execute($examIds);
         $removedAttempts = $del->rowCount();
+
+        if ($attemptIds !== []) {
+            $ids = implode(',', array_fill(0, count($attemptIds), '?'));
+            foreach (array_keys($removedChildren) as $table) {
+                $left = $db->prepare("SELECT COUNT(*) FROM $table WHERE attempt_id IN ($ids)");
+                $left->execute($attemptIds);
+                if ((int) $left->fetchColumn() !== 0) {
+                    throw new RuntimeException("$table rows survived deleting their attempts.");
+                }
+            }
+        }
 
         $del = $db->prepare("DELETE FROM exams WHERE id IN ($in) AND course_id = ?");
         $del->execute(array_merge($examIds, [$subjectId]));
@@ -294,6 +322,8 @@ echo "Hand-check exam ready in database '" . DB_NAME . "' on " . DB_HOST . "\n";
 echo "\n";
 printf("Removed from the last run: %d exam(s), %d attempt(s), %d question(s)\n",
     $removedExams, $removedAttempts, $removedQuestions);
+printf("          with the attempts: %d lock(s), %d event(s), %d blocked-action row(s)\n",
+    $removedChildren['attempt_locks'], $removedChildren['attempt_events'], $removedChildren['attempt_blocked_actions']);
 echo "\n";
 printf("Teacher   %s (%s)\n", TEACHER_NAME, $teacherState);
 printf("          Email      %s\n", TEACHER_EMAIL);

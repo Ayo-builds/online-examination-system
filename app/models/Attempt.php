@@ -12,6 +12,17 @@ class Attempt extends Model
     // deadline_at - the paper's contents are frozen however late the sweep runs.
     public const SWEEP_GRACE_MINUTES = 5;
 
+    // Answers already on their way when the candidate left the paper still
+    // land for this long after the pause began. The page sends what it has the
+    // moment it notices, but that request and the lock race each other across
+    // the network, and a candidate's last sentence must not lose that race.
+    public const SAVE_GRACE_SECONDS = 5;
+
+    // A heartbeat arrives every 15 seconds. Three missed in a row is logged.
+    // Only logged: a switch rebooting or a cable knocked out of a PC must never
+    // pause someone's exam.
+    public const HEARTBEAT_GAP_SECONDS = 45;
+
     public function findByExamAndStudent(int $examId, int $studentId): ?array
     {
         $row = $this->query(
@@ -222,6 +233,163 @@ class Attempt extends Model
         return $row !== false;
     }
 
+    // ---- Pausing ------------------------------------------------------------
+    //
+    // Every time below comes from the database's NOW(), never PHP's clock. The
+    // two already disagree in this codebase (deadline_at is written by MySQL
+    // and has been compared in PHP), and a pause measured by one clock and
+    // enforced by the other would open or shut the save window by hours.
+
+    // Pause this attempt because the candidate left the paper. Returns
+    // 'locked' for a new pause, 'appended' when it was already paused and this
+    // trigger was added to the same pause, and 'closed' when there is nothing
+    // to pause: submitted, closed, or past its deadline.
+    //
+    // A blur and a hidden tab usually arrive together. The decision is the row
+    // count of ONE conditional UPDATE, never a read followed by a write: two
+    // requests cannot both see "not locked", because InnoDB makes the second
+    // UPDATE wait for the first to commit and then re-check its WHERE. The
+    // lock row is inserted only by the request whose UPDATE changed the row,
+    // and attempt_locks' unique open_attempt_id refuses a second open lock if
+    // anything ever gets that wrong.
+    //
+    // The row is created holding {"triggers":[first]} and later triggers are
+    // appended in a single statement. JSON_ARRAY_APPEND quietly does nothing
+    // to a document without a triggers array, so it must exist from the start.
+    public function lock(int $attemptId, string $trigger, ?int $blurMs): string
+    {
+        $entry = "JSON_OBJECT('type', ?, 'at', DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), 'blur_ms', CAST(? AS SIGNED))";
+
+        try {
+            $this->db->beginTransaction();
+
+            $paused = $this->query(
+                "UPDATE exam_attempts SET locked_at = NOW()
+                  WHERE id = ? AND status = 'in_progress' AND locked_at IS NULL AND deadline_at > NOW()",
+                [$attemptId]
+            )->rowCount();
+
+            if ($paused === 1) {
+                // The lock's time is the attempt's, read back rather than taken
+                // from a second NOW() that could fall in the next second.
+                $this->query(
+                    "INSERT INTO attempt_locks (attempt_id, trigger_type, detail, locked_at)
+                     SELECT id, ?, JSON_OBJECT('triggers', JSON_ARRAY($entry)), locked_at
+                       FROM exam_attempts WHERE id = ?",
+                    [$trigger, $trigger, $blurMs, $attemptId]
+                );
+                $this->db->commit();
+                return 'locked';
+            }
+
+            $appended = $this->query(
+                "UPDATE attempt_locks l
+                   JOIN exam_attempts a ON a.id = l.attempt_id
+                    SET l.detail = JSON_ARRAY_APPEND(l.detail, '$.triggers', $entry)
+                  WHERE l.attempt_id = ? AND l.unlocked_at IS NULL
+                    AND a.status = 'in_progress' AND a.locked_at IS NOT NULL",
+                [$trigger, $blurMs, $attemptId]
+            )->rowCount();
+
+            $this->db->commit();
+            return $appended === 1 ? 'appended' : 'closed';
+
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    // Save one answer unless the attempt is paused and the grace has run out.
+    // Returns 'saved', 'locked' or 'closed'.
+    //
+    // The window is decided in the same statement that reads the attempt, on
+    // the database's clock, and the row stays locked until the answer is
+    // written, so a pause cannot land between the check and the write.
+    public function saveAnswerIfWritable(int $attemptId, int $questionId, ?int $optionId, ?string $essayText): string
+    {
+        try {
+            $this->db->beginTransaction();
+
+            $row = $this->query(
+                "SELECT status = 'in_progress' AS open,
+                        locked_at IS NULL OR NOW() <= locked_at + INTERVAL " . self::SAVE_GRACE_SECONDS . " SECOND AS writable
+                   FROM exam_attempts WHERE id = ? FOR UPDATE",
+                [$attemptId]
+            )->fetch();
+
+            if ($row === false || (int) $row['open'] !== 1) {
+                $this->db->commit();
+                return 'closed';
+            }
+            if ((int) $row['writable'] !== 1) {
+                $this->db->commit();
+                return 'locked';
+            }
+
+            $this->saveAnswer($attemptId, $questionId, $optionId, $essayText);
+            $this->db->commit();
+            return 'saved';
+
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    // The page's pulse. Returns null when the attempt is not in progress, and
+    // writes nothing then. Otherwise records it, logs a long silence before
+    // it, and says whether the attempt is paused and how long is left, both by
+    // the database's clock.
+    public function heartbeat(int $attemptId): ?array
+    {
+        try {
+            $this->db->beginTransaction();
+
+            $row = $this->query(
+                "SELECT status, locked_at IS NOT NULL AS locked,
+                        TIMESTAMPDIFF(SECOND, last_seen_at, NOW()) AS silence,
+                        GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), deadline_at)) AS remaining
+                   FROM exam_attempts WHERE id = ? FOR UPDATE",
+                [$attemptId]
+            )->fetch();
+
+            if ($row === false || $row['status'] !== 'in_progress') {
+                $this->db->commit();
+                return null;
+            }
+
+            if ($row['silence'] !== null && (int) $row['silence'] > self::HEARTBEAT_GAP_SECONDS) {
+                $this->query(
+                    "INSERT INTO attempt_events (attempt_id, event_type, detail, created_at)
+                     VALUES (?, 'heartbeat_gap', JSON_OBJECT('seconds', CAST(? AS SIGNED)), NOW())",
+                    [$attemptId, (int) $row['silence']]
+                );
+            }
+
+            $this->query("UPDATE exam_attempts SET last_seen_at = NOW() WHERE id = ?", [$attemptId]);
+
+            $this->db->commit();
+            return ['locked' => (int) $row['locked'] === 1, 'remaining' => (int) $row['remaining']];
+
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    // A short blur that came back in time: worth recording, not worth a pause.
+    // Written only while the attempt is in progress; returns false otherwise.
+    public function recordBlurBlip(int $attemptId, ?int $ms): bool
+    {
+        return $this->query(
+            "INSERT INTO attempt_events (attempt_id, event_type, detail, created_at)
+             SELECT id, 'blur_blip', JSON_OBJECT('ms', CAST(? AS SIGNED)), NOW()
+               FROM exam_attempts WHERE id = ? AND status = 'in_progress'",
+            [$ms, $attemptId]
+        )->rowCount() === 1;
+    }
+
     // Save (insert or update) one answer. Upsert on the composite key.
     public function saveAnswer(int $attemptId, int $questionId, ?int $optionId, ?string $essayText): void
     {
@@ -249,7 +417,8 @@ class Attempt extends Model
 
     // Grade all MCQs against frozen correct answers; flag essays for manual grading.
     // Returns ['auto_score' => float, 'has_essays' => bool], or null when the
-    // attempt had already been closed by someone else and nothing was done.
+    // attempt had already been closed by someone else, or is paused, and
+    // nothing was done.
     //
     // $unsavedAtSubmit is how many answers the browser still had outstanding.
     // It is recorded, never acted on: a failed save must not cost a student
@@ -262,10 +431,16 @@ class Attempt extends Model
     ): ?array {
         // The unsaved count rides along in the claim itself, so a paper can
         // never be marked submitted without the record of how it was.
+        //
+        // A paused attempt cannot be submitted, and that is decided here, in
+        // the claim, not by a check before it: a pause arriving between a check
+        // and this UPDATE would otherwise leave a submitted paper with an open
+        // lock. autoSubmit() deliberately has no such condition, because a
+        // paused paper must still close at its deadline.
         return $this->claimAndGrade(
             "UPDATE exam_attempts
              SET status = ?, submitted_at = NOW(), unsaved_at_submit = ?
-             WHERE id = ? AND status = 'in_progress'",
+             WHERE id = ? AND status = 'in_progress' AND locked_at IS NULL",
             [$finalStatus, $unsavedAtSubmit, $attemptId],
             $attemptId
         );
@@ -362,7 +537,7 @@ class Attempt extends Model
     {
         return $this->query(
             "SELECT a.id, a.status, a.total_score, a.grading_status, a.is_flagged,
-                    a.submitted_at, a.closed_by_system_at,
+                    a.submitted_at, a.closed_by_system_at, a.locked_at,
                     u.full_name AS student_name, u.admission_no,
                     cl.year_group, cl.arm,
                     e.title AS exam_title, e.pass_mark,

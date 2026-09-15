@@ -99,6 +99,10 @@ function test_reset_database(): void
  * Serve the real app through PHP's built-in server on $host:$port for the
  * rest of this script, and stop it on every way out.
  *
+ * $config is the file the app loads, relative to the repository. It is
+ * config/config.test.php unless a suite needs the same test database under
+ * different PHP settings, such as tests/config.clock_offset.php.
+ *
  * It refuses to share the port. A process already listening there was not
  * started by this run, so its docroot, config and database are unknown, and a
  * suite that quietly tests it proves nothing. That is not hypothetical: from
@@ -120,7 +124,7 @@ function test_reset_database(): void
  * when the console is closed or Ctrl+C is pressed on Windows; a server left
  * that way is caught by the port check on the next run.
  */
-function test_start_server(string $host, int $port): void
+function test_start_server(string $host, int $port, string $config = 'config/config.test.php'): void
 {
     $probe = @fsockopen($host, $port, $errno, $errstr, 0.5);
     if ($probe) {
@@ -142,7 +146,7 @@ function test_start_server(string $host, int $port): void
         [1 => ['file', $log, 'a'], 2 => ['file', $log, 'a']],
         $pipes,
         APP_ROOT,
-        array_merge(getenv(), ['EXAM_CONFIG' => 'config/config.test.php'])
+        array_merge(getenv(), ['EXAM_CONFIG' => $config])
     );
 
     if (!is_resource($server)) {

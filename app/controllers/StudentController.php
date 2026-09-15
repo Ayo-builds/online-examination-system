@@ -186,6 +186,13 @@ class StudentController extends Controller
             $this->json(['ok' => false, 'error' => 'closed'], 409);
         }
 
+        // Paused: no questions until an invigilator unlocks it. A refresh, a
+        // new tab or another computer asks this same question and gets the
+        // same answer, because the pause lives on the attempt.
+        if ($attempt['locked_at'] !== null) {
+            $this->json(['ok' => false, 'error' => 'locked'], 423);
+        }
+
         $questions = array_map(static fn(array $q): array => [
             'question_id'        => (int) $q['question_id'],
             'display_order'      => (int) $q['display_order'],
@@ -249,9 +256,157 @@ class StudentController extends Controller
             $this->json(['ok' => false, 'error' => 'bad_option'], 422);
         }
 
-        $attemptModel->saveAnswer($attemptId, $questionId, $optionId, $essayText);
+        // Paused and past the grace: refused as 'locked', which the page must
+        // never mistake for 'closed' - that one submits the paper.
+        $outcome = $attemptModel->saveAnswerIfWritable($attemptId, $questionId, $optionId, $essayText);
+
+        if ($outcome === 'locked') {
+            $this->json(['ok' => false, 'error' => 'locked'], 423);
+        }
+        if ($outcome === 'closed') {
+            $this->json(['ok' => false, 'error' => 'closed'], 409);
+        }
 
         $this->json(['ok' => true, 'saved_at' => date('H:i:s')]);
+    }
+
+    // The ways a page may report that its candidate left the paper. new_session
+    // is not among them: only the server can tell that another browser opened
+    // the attempt.
+    private const CLIENT_LOCK_TRIGGERS = ['window_blur', 'tab_hidden', 'fullscreen_exit'];
+
+    // How long a blur lasted, as the page measured it. A whole number of
+    // milliseconds up to ten minutes, or nothing: a value that is not exactly
+    // that is stored as null rather than refused, because refusing it would
+    // refuse the pause, and rather than cast, because "3200abc" is not 3200.
+    private static function blurMilliseconds($raw): ?int
+    {
+        if (!is_string($raw) || !preg_match('/^(0|[1-9][0-9]{0,5})$/', $raw)) {
+            return null;
+        }
+        $ms = (int) $raw;
+        return $ms <= 600000 ? $ms : null;
+    }
+
+    // POST /student/lock/{attemptId}. AJAX, returns JSON
+    //
+    // The page saw the candidate leave: a blur that outlasted its grace, a
+    // hidden tab, or fullscreen given up. Pausing an attempt that is already
+    // paused adds the trigger to that pause and answers the same way, so a
+    // blur and a hidden tab arriving together are one pause.
+    public function lock(string $attemptId = ''): void
+    {
+        header('Cache-Control: no-store');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->json(['ok' => false, 'error' => 'method'], 405);
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->json(['ok' => false, 'error' => 'csrf'], 403);
+        }
+
+        $attemptId = (int) $attemptId;
+        $studentId = (int) Auth::user()['id'];
+
+        $attemptModel = new Attempt();
+        $attempt = $attemptModel->findOwned($attemptId, $studentId);
+
+        if ($attempt === null) {
+            $this->json(['ok' => false, 'error' => 'not_found'], 404);
+        }
+
+        $trigger = $_POST['trigger'] ?? '';
+        if (!is_string($trigger) || !in_array($trigger, self::CLIENT_LOCK_TRIGGERS, true)) {
+            $this->json(['ok' => false, 'error' => 'bad_trigger'], 422);
+        }
+
+        // Past its deadline: close it rather than pause it. Whether it is still
+        // in progress is not checked out here: lock() decides that inside its
+        // own UPDATE, where a submit arriving at the same instant cannot slip
+        // between the check and the pause.
+        if ($attempt['status'] === 'in_progress' && strtotime($attempt['deadline_at']) <= time()) {
+            $attemptModel->autoSubmit($attemptId);
+            $this->json(['ok' => false, 'error' => 'closed'], 409);
+        }
+
+        $blurMs = $trigger === 'window_blur' ? self::blurMilliseconds($_POST['blur_ms'] ?? null) : null;
+
+        $outcome = $attemptModel->lock($attemptId, $trigger, $blurMs);
+
+        if ($outcome === 'closed') {
+            $this->json(['ok' => false, 'error' => 'closed'], 409);
+        }
+
+        $this->json(['ok' => true, 'locked' => true, 'new' => $outcome === 'locked']);
+    }
+
+    // POST /student/heartbeat/{attemptId}. AJAX, returns JSON
+    //
+    // Sent every 15 seconds. Tells the page whether its attempt is paused,
+    // which is how a page learns of a pause it did not cause, and how long is
+    // left by the database's clock. A long silence before it is logged and
+    // never pauses anyone.
+    public function heartbeat(string $attemptId = ''): void
+    {
+        header('Cache-Control: no-store');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->json(['ok' => false, 'error' => 'method'], 405);
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->json(['ok' => false, 'error' => 'csrf'], 403);
+        }
+
+        $attemptId = (int) $attemptId;
+        $studentId = (int) Auth::user()['id'];
+
+        $attemptModel = new Attempt();
+        if ($attemptModel->findOwned($attemptId, $studentId) === null) {
+            $this->json(['ok' => false, 'error' => 'not_found'], 404);
+        }
+
+        // Whether it is still in progress is decided inside heartbeat(), on the
+        // locked row, not by a check out here that could go stale.
+        $beat = $attemptModel->heartbeat($attemptId);
+        if ($beat === null) {
+            $this->json(['ok' => false, 'error' => 'closed'], 409);
+        }
+
+        $this->json(['ok' => true, 'locked' => $beat['locked'], 'remaining' => $beat['remaining']]);
+    }
+
+    // POST /student/event/{attemptId}. AJAX, returns JSON
+    //
+    // Something worth recording that is not a pause. For now only a blur that
+    // came back inside its grace.
+    public function event(string $attemptId = ''): void
+    {
+        header('Cache-Control: no-store');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->json(['ok' => false, 'error' => 'method'], 405);
+        }
+        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
+            $this->json(['ok' => false, 'error' => 'csrf'], 403);
+        }
+
+        $attemptId = (int) $attemptId;
+        $studentId = (int) Auth::user()['id'];
+
+        $attemptModel = new Attempt();
+        if ($attemptModel->findOwned($attemptId, $studentId) === null) {
+            $this->json(['ok' => false, 'error' => 'not_found'], 404);
+        }
+
+        if (($_POST['type'] ?? '') !== 'blur_blip') {
+            $this->json(['ok' => false, 'error' => 'bad_event'], 422);
+        }
+
+        if (!$attemptModel->recordBlurBlip($attemptId, self::blurMilliseconds($_POST['ms'] ?? null))) {
+            $this->json(['ok' => false, 'error' => 'closed'], 409);
+        }
+
+        $this->json(['ok' => true]);
     }
 
 
@@ -270,58 +425,6 @@ class StudentController extends Controller
     public function sessionToken(): void
     {
         $this->json(['ok' => true, 'csrf_token' => Csrf::token()]);
-    }
-
-    // POST /student/logActivity/{attemptId}. AJAX, returns JSON
-    public function logActivity(string $attemptId = ''): void
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->json(['ok' => false], 405);
-        }
-        if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
-            $this->json(['ok' => false], 403);
-        }
-
-        $attemptId = (int) $attemptId;
-        $studentId = (int) Auth::user()['id'];
-
-        $attemptModel = new Attempt();
-        $attempt = $attemptModel->findOwned($attemptId, $studentId);
-
-        if ($attempt === null) {
-            $this->json(['ok' => false], 404);
-        }
-        // Only log during a live attempt
-        if ($attempt['status'] !== 'in_progress') {
-            $this->json(['ok' => false, 'error' => 'closed'], 409);
-        }
-
-        // Whitelist the event types we accept
-        $allowed = ['tab_switch', 'fullscreen_exit', 'window_blur',
-                    'copy', 'paste', 'right_click', 'heartbeat_gap'];
-        $eventType = $_POST['event_type'] ?? '';
-
-        if (!in_array($eventType, $allowed, true)) {
-            $this->json(['ok' => false, 'error' => 'bad_event'], 422);
-        }
-
-        $logModel = new ActivityLog();
-        $logModel->record($attemptId, $eventType, ['ua' => $_SERVER['HTTP_USER_AGENT'] ?? '']);
-
-        // Cross the threshold → flag the attempt for lecturer review
-        $counts = $logModel->countByType($attemptId);
-        $suspicious = 0;
-        foreach ($counts as $c) {
-            if (in_array($c['event_type'], ['tab_switch', 'window_blur', 'fullscreen_exit'], true)) {
-                $suspicious += (int) $c['total'];
-            }
-        }
-
-        if ($suspicious >= FLAG_THRESHOLD) {
-            $attemptModel->setFlagged($attemptId, true);
-        }
-
-        $this->json(['ok' => true, 'suspicious' => $suspicious, 'flagged' => $suspicious >= FLAG_THRESHOLD]);
     }
 
     // POST /student/submitExam/{attemptId}
@@ -352,12 +455,23 @@ class StudentController extends Controller
         $unsaved = max(0, (int) ($_POST['unsaved_count'] ?? 0));
         $unsaved = min($unsaved, $attemptModel->questionCount($attemptId));
 
-        // Only an in-progress attempt can be submitted
+        // Only an in-progress attempt can be submitted. Answer fields in this
+        // POST are never read: what is graded is what saveAnswer stored, so a
+        // paused candidate cannot slip changed answers in through Submit.
         if ($attempt['status'] === 'in_progress') {
             // Deadline passed? Grade as auto_submitted; else a normal submit.
             $status = strtotime($attempt['deadline_at']) <= time()
                     ? 'auto_submitted' : 'submitted';
-            $attemptModel->submitAndGrade($attemptId, $status, $unsaved);
+
+            // Refused while paused, by the claim inside submitAndGrade() rather
+            // than a check here that a pause could slip past. Back to the paper,
+            // which is where a paused candidate is told why.
+            if ($attemptModel->submitAndGrade($attemptId, $status, $unsaved) === null) {
+                $now = $attemptModel->findOwned($attemptId, $studentId);
+                if ($now !== null && $now['status'] === 'in_progress') {
+                    $this->redirect('student/exam/' . $attemptId);
+                }
+            }
         }
 
         $this->redirect('student/result/' . $attemptId);
