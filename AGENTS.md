@@ -29,6 +29,10 @@
 - Commit at each verified checkpoint. Never push until I say so.
 - Use clear, descriptive commit messages
 
+## The anti-cheat plan
+- The plan lives in docs/anti-cheat-plan.md and must be updated in the same
+  commit as any change to the plan.
+
 ## Tests and data safety
 - Never point config/config.php at a test database; use config/config.test.php.
 - Never run DELETE FROM users.
