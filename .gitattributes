@@ -1,0 +1,5 @@
+* text=auto
+
+# Windows batch files must keep CRLF. cmd.exe mis-parses LF-only .bat files,
+# typically failing on the last line or on a label it cannot find.
+*.bat text eol=crlf
