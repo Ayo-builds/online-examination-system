@@ -26,6 +26,7 @@ Source messages are cited as `#n`, the record index in the transcript.
 | — | Hand-check dev script (support, not a numbered stage) | **Done** | `d5b5a37` |
 | 3 | Migration 007 | **Done**, applied to local `exam_system` | `21f2d03` |
 | 4 | Server lock core | **Done**, hand checks completed 2026-09-21 | `cbdb96e` |
+| — | Error handling: an exception handler in the front controller, plus `register_shutdown_function` (next, before 4b) | **Not started** | — |
 | 4b | Every deadline decision on the database clock | **Not started** | — |
 | 5 | Client lock monitor and overlay | **Not started** | — |
 | 6 | Invigilator screen, read only | **Not started** | — |
@@ -36,11 +37,14 @@ Source messages are cited as `#n`, the record index in the transcript.
 | 11 | Words and docs | **Not started** | — |
 
 Every stage 4 hand check has passed. The results are under stage 4 in Part 4.
-Next is step 4b.
+Next is the error handling: an exception handler in the front controller, plus
+`register_shutdown_function`. This is the error handler from the 16 Sep 1467
+brief, still open under stage 4 in Part 4. Step 4b comes after it.
 
-Production is on `c06e676` and must not be touched. `main` is pushed to
-GitHub, but pushing is not deploying: nothing is deployed until stage 5 is done
-and the deployment checklist is followed.
+Production's commit: unknown, verify on the server before any deploy
+(`git log --oneline -1` on the server). Production must not be touched. `main`
+is pushed to GitHub, but pushing is not deploying: nothing is deployed until
+stage 5 is done and the deployment checklist is followed.
 
 ---
 
