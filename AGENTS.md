@@ -26,7 +26,13 @@
   form field to match a label.
 
 ## Git Workflow
-- Commit at each verified checkpoint. Never push until I say so.
+- Commit and push to main at every verified checkpoint.
+- Before each push: list the commits being pushed, confirm no secrets, dumps,
+  .sql files, .env or credentials are in them, and confirm nothing
+  auto-deploys.
+- Pushing is not deploying. Never deploy to production (no git pull on the
+  server) without my explicit approval. The current hold stands: no deploy
+  until stage 5 is done and the deployment checklist is followed.
 - Use clear, descriptive commit messages
 
 ## The anti-cheat plan
