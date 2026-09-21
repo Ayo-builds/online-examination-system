@@ -27,9 +27,13 @@
 
 ## Git Workflow
 - Commit and push to main at every verified checkpoint.
-- Before each push: list the commits being pushed, confirm no secrets, dumps,
-  .sql files, .env or credentials are in them, and confirm nothing
+- Before each push: list the commits being pushed, confirm they carry no
+  secrets, credentials, .env files or database dumps, and confirm nothing
   auto-deploys.
+- A dump is any file holding rows: mysqldump output, a data export, anything
+  matching the gitignored `/*-backup-*.sql`. Schema source under `database/`
+  is NOT a dump: `schema.sql`, `schema_import.sql` and the numbered migrations
+  are tracked on purpose, hold structure only, and do get pushed.
 - Pushing is not deploying. Never deploy to production (no git pull on the
   server) without my explicit approval. The current hold stands: no deploy
   until stage 5 is done and the deployment checklist is followed.
