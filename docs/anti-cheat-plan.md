@@ -819,6 +819,30 @@ Known interim quirk until stage 5 (`#1178`):
 
 > a save refused with 423 is retried by the save queue with backoff, so the status line reads NOT SAVED and requests keep going. Plan note B fixes that.
 
+### Added 2026-09-21: the 1467 error, and the restart experiment dropped
+
+- **Error 1467 on attempt 8 followed an unclean restart.** On 16 Sep a lock
+  request for attempt 8 failed with `SQLSTATE[HY000] 1467 "Failed to read
+  auto-increment value from storage engine"` on the `INSERT INTO
+  attempt_locks`. The transaction rolled back (attempt 8 kept `locked_at` NULL,
+  and no lock row was written). `SHOW TABLE STATUS` gave `Auto_increment: 0`
+  for `attempt_locks`. MySQL had started twice that morning, at 10:40:44 and
+  10:40:54, both times through crash recovery and with no clean shutdown
+  before. A server-wide `FLUSH TABLES` brought the counter back to 2.
+- **The restart experiment was dropped.** It was meant to find out whether the
+  table's shape (the VIRTUAL generated column with its UNIQUE index) or the
+  restart caused the fault, using four probe tables in
+  `exam_system_test_autoinc`. The cause turned out to be the Aria and
+  crash-recovery damage, which came from mysqld started by the XAMPP Control
+  Panel (see stage 11, "running MySQL on a school server"). The fix is the
+  clean start and stop scripts in `scripts/windows/`, so the experiment is no
+  longer needed. `exam_system_test_autoinc` held only the four empty probe
+  tables and was dropped on 21 Sep 2026.
+- The 16 Sep brief's other asks are still open: JSON endpoints must return
+  HTTP 500 with a small JSON error when they throw, with no stack trace and no
+  file paths (the error handler), and the proposal must say what production
+  shows today with `display_errors`.
+
 **Hand checks outstanding.** Passed: lock, second trigger, one lock row with both triggers, saves refused with 423, paper refused with the paused message, "Closed while paused" labels. Still to check: submit refused while locked, `blur_blip` event, heartbeat, and `heartbeat_gap` logging. The full list is in the stage 4 brief at `#914`, steps 1–10.
 
 ## Step 4b — Every deadline decision on the database clock · **Not started**
