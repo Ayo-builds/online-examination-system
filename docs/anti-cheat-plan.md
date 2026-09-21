@@ -956,6 +956,35 @@ Notes filed here:
   > - The existing 14 tables still inherit their character set. An install that loads `schema_import.sql` into a database created with a latin1 default gets latin1 tables. `schema.sql` is safe because it creates its own utf8mb4 database.
   > - [OFFLINE-DEPLOYMENT.md §3](OFFLINE-DEPLOYMENT.md#L88-L108) says "Expect 14 tables". Once 007 lands there will be 18. Its command also uses `<`, which works in cmd but is a syntax error in PowerShell.
 
+### Added 2026-09-21: running MySQL on a school server
+
+From the dev-laptop work on starting and stopping MySQL safely. These are
+deployment-checklist items, not application changes.
+
+- **Install MySQL as a Windows service** on school servers. It gives a clean
+  shutdown when the machine is powered off and starts automatically on boot,
+  neither of which the XAMPP Control Panel provides.
+- **Before relying on the Windows service on a school server, verify its
+  shutdown logs no Aria errors, since mysqld started without console handles
+  failed Aria checkpoints on the dev laptop.** On 21 Sep 2026 both
+  Control-Panel-started instances failed their Aria checkpoint on a normal
+  `mysqladmin shutdown` — `Error writing file 'aria_log_control' (Errcode: 9
+  "Bad file descriptor")`, `Aria engine: checkpoint failed` — while instances
+  started with real stdout/stderr file handles shut down clean every time. A
+  service starts mysqld without a console, so it must be checked, not assumed.
+- **Stop MySQL with the service, or with `mysqladmin -u root shutdown`. Never
+  the Control Panel's Stop button**, which runs `killprocess.bat` on
+  `mysqld.exe` — a force-kill.
+- `bind-address=127.0.0.1` in `my.ini` unless the database must be reached from
+  another machine.
+- Set a **root password**, and update every application config that connects.
+- `display_errors = Off` in `php.ini`.
+- Confirm **MariaDB 10.4 or newer** (`SELECT VERSION();`) and **record the
+  server's `sql_mode`** (`SELECT @@GLOBAL.sql_mode;`) in the install notes.
+- **Check the existing tables' collations** before deploying: loading
+  `schema_import.sql` into a database created with a latin1 default gets latin1
+  tables.
+
 ---
 
 # Part 5: added from review
