@@ -17,7 +17,7 @@ not resolve from this file's directory; read them as paths, not as links.
 
 Source messages are cited as `#n`, the record index in the transcript.
 
-## Status at 2026-09-16
+## Status at 2026-09-21
 
 | # | Stage | Status | Commit |
 |---|---|---|---|
@@ -25,7 +25,7 @@ Source messages are cited as `#n`, the record index in the transcript.
 | 2 | Paper over JSON and the no-JavaScript shell | **Done** | `bb34ea6` |
 | — | Hand-check dev script (support, not a numbered stage) | **Done** | `d5b5a37` |
 | 3 | Migration 007 | **Done**, applied to local `exam_system` | `21f2d03` |
-| 4 | Server lock core | **In progress** — built, tested and committed; hand checks part done | `cbdb96e` |
+| 4 | Server lock core | **Done**, hand checks completed 2026-09-21 | `cbdb96e` |
 | 4b | Every deadline decision on the database clock | **Not started** | — |
 | 5 | Client lock monitor and overlay | **Not started** | — |
 | 6 | Invigilator screen, read only | **Not started** | — |
@@ -35,12 +35,12 @@ Source messages are cited as `#n`, the record index in the transcript.
 | 10 | Paste logging and teacher history | **Not started** | — |
 | 11 | Words and docs | **Not started** | — |
 
-Stage 4 hand checks passed so far: lock, second trigger, one lock row with both
-triggers, saves refused with 423, paper refused with the paused message, and
-"Closed while paused" labels. Still to check: submit refused while locked,
-`blur_blip` event, heartbeat, and `heartbeat_gap` logging.
+Every stage 4 hand check has passed. The results are under stage 4 in Part 4.
+Next is step 4b.
 
-Production is on `c06e676` and must not be touched. Nothing is pushed.
+Production is on `c06e676` and must not be touched. `main` is pushed to
+GitHub, but pushing is not deploying: nothing is deployed until stage 5 is done
+and the deployment checklist is followed.
 
 ---
 
@@ -791,7 +791,7 @@ Verified by hand (`#901`):
 
 > Stage 3 verified: after 007 was applied to exam_system, Admin Analytics matched the numbers from before, the four new tables exist and are empty, the three new exam_attempts columns are NULL on every row, a fresh HANDCHECK attempt was sat, reloaded, submitted and graded, old CSC301 flags and activity timelines still show, and the hand-check script removed the graded attempt cleanly.
 
-## Stage 4 — Server lock core · **In progress**, `cbdb96e`
+## Stage 4 — Server lock core · **Done**, `cbdb96e`
 
 Brief: `#914`, approved at `#917`. Additions at `#917` (Part 3, Amendment 9 items 1–4).
 
@@ -843,7 +843,60 @@ Known interim quirk until stage 5 (`#1178`):
   file paths (the error handler), and the proposal must say what production
   shows today with `display_errors`.
 
-**Hand checks outstanding.** Passed: lock, second trigger, one lock row with both triggers, saves refused with 423, paper refused with the paused message, "Closed while paused" labels. Still to check: submit refused while locked, `blur_blip` event, heartbeat, and `heartbeat_gap` logging. The full list is in the stage 4 brief at `#914`, steps 1–10.
+**Hand checks: all passed.** The first six passed before 21 Sep: lock, second
+trigger, one lock row with both triggers, saves refused with 423, paper
+refused with the paused message, and "Closed while paused" labels. The full
+list is in the stage 4 brief at `#914`, steps 1–10.
+
+### Added 2026-09-21: the last four hand checks
+
+Run in Edge on HANDCHECK attempt 9 (exam 13), all in one attempt. MySQL was
+started and stopped with the clean scripts. The page does not send heartbeats,
+blips or locks until stage 5, so each request was sent from the DevTools
+console with the page's own CSRF token. Each result was confirmed in the
+database.
+
+- **Heartbeat.** The first heartbeat gave `200 {"ok":true,"locked":false}` and
+  set `last_seen_at`. It logged no gap, because there was no earlier heartbeat.
+  Each `remaining` the heartbeat returned equalled `deadline_at` minus that
+  heartbeat's `last_seen_at`, to the second (1181 and 883).
+- **`heartbeat_gap`.** `last_seen_at` was moved back 60 s by SQL. The next
+  heartbeat came 261 s after the moved value, and gave `200` and
+  `locked:false`. It logged `heartbeat_gap {"seconds": 261}` and left
+  `locked_at` NULL: a gap is logged and never pauses.
+- **`blur_blip`.** `ms=1200` was stored as `{"ms": 1200}`. `ms=3200abc` was
+  stored as `{"ms": null}`, not rejected and not cast to 3200. Both returned
+  200. `type=focus_lost` returned `422 bad_event` and wrote nothing.
+- **Submit refused while locked.** A lock with `tab_hidden` gave
+  `{"ok":true,"locked":true,"new":true}`, and the heartbeat after it reported
+  `locked:true`. Submitting the real form sent the browser back to
+  `student/exam/9`, not the result page. The timer kept running, and the gate
+  showed the paused message with no questions. In the database the attempt was
+  still `in_progress`, with `submitted_at` and `total_score` NULL,
+  `grading_status` `pending`, one open `tab_hidden` lock row, and both saved
+  answers present. No answer snapshot was taken before the submit, so this
+  shows the answers were still there, not that they were untouched. L5 proves
+  the unchanged part.
+- **The lock insert works on a long-lived table.** On 16 Sep, attempt 8's lock
+  failed with 1467 on the `INSERT INTO attempt_locks` (above). The same insert
+  on attempt 9 succeeded and wrote lock row 2 without error.
+- **Cleanup.** The rerun of the hand-check script removed attempt 9 with
+  **1 lock and 4 events**, not the 3 events predicted in the brief. The fourth
+  is correct: E's heartbeat came 298 s after the one before it, so it logged a
+  second `heartbeat_gap` and still did not lock. Afterwards `attempt_locks`,
+  `attempt_events` and `attempt_blocked_actions` were empty. The `exam_system`
+  fingerprints differed from the 21 Sep baseline only in HANDCHECK rows. MySQL
+  shut down cleanly, with no Aria errors in the Application event log.
+
+**L5 was checked for vacuity** in the stage 4 vacuity run on 15 Sep 2026, just
+before `cbdb96e`. Two breaks to the submit path were each applied on their own,
+and both were caught:
+- `AND locked_at IS NULL` removed from the submit claim in `submitAndGrade()`,
+  so a paused attempt could be submitted: 6 L5 assertions failed.
+- Posted answers saved before the locked check: 4 L5 assertions failed.
+
+R4 also caught the first break under a real race. No commit since `cbdb96e`
+has touched `app/` or `tests/`.
 
 ## Step 4b — Every deadline decision on the database clock · **Not started**
 
