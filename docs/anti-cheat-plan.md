@@ -28,7 +28,7 @@ Source messages are cited as `#n`, the record index in the transcript.
 | 4 | Server lock core | **Done**, hand checks completed 2026-09-21 | `cbdb96e` |
 | — | Error handling: an exception handler in the front controller, plus `register_shutdown_function` (before 4b) | **Done**, hand checks completed 2026-09-22 | `c92cf9c` |
 | 4b | Every deadline decision on the database clock | **Done**, hand checks completed 2026-09-22 | `659e23c` |
-| — | Multiple-choice options missing when `shuffle_options = 0` (after 4b is closed; its own brief) | **Not started** | — |
+| — | Multiple-choice options missing when `shuffle_options` is 0 or NULL | **Not started**, brief approved 2026-09-22 | — |
 | 5 | Client lock monitor and overlay | **Not started** | — |
 | 6 | Invigilator screen, read only | **Not started** | — |
 | 7 | Claim, code, unlock at the seat | **Not started** | — |
@@ -37,12 +37,69 @@ Source messages are cited as `#n`, the record index in the transcript.
 | 10 | Paste logging and teacher history | **Not started** | — |
 | 11 | Words and docs | **Not started** | — |
 
-Every stage 4 hand check has passed. The results are under stage 4 in Part 4.
-The error handling (the error handler from the 16 Sep 1467 brief) is done:
-built, tested, and hand-checked on 22 Sep. Its section in Part 4 comes straight
-after stage 4. Step 4b is done (`659e23c`, hand-checked 22 Sep). Next is the
-small fix for multiple-choice options missing when shuffling is off, with its
-own brief. Stage 5 comes after it.
+Stage 4, the error handling and step 4b are done and hand-checked. Their
+results are in Part 4, in that order.
+
+### Next steps, in order
+
+1. **Build the options fix:** "Multiple-choice options missing when
+   shuffling is off" in Part 4, just before stage 5. The brief and both
+   decisions are approved; build, test, run the breaks, commit and push, then
+   the owner's hand checks. Before it is ever deployed, run the WhoGoHost
+   shuffle queries in that section.
+2. **Stage 5, client lock monitor and overlay.** It has no brief yet; write
+   one and wait for approval. Its filed notes are under stage 5 in Part 4
+   (submit must not lock, leftover labels, a 423 keeping the answer queued,
+   and the paused gate).
+
+### Pending, owner's side: WhoGoHost clock check
+
+The owner is running this separately; don't wait for it. It records why
+`Database.php`'s `SET time_zone = '+01:00'` stays (see step 4b). The owner has
+no SSH: phpMyAdmin and DirectAdmin's browser Terminal only.
+
+phpMyAdmin → SQL (phpMyAdmin doesn't run the app's `SET time_zone`, so
+`NOW()` here is the server's own zone):
+```sql
+SELECT NOW() AS server_now, UTC_TIMESTAMP() AS utc_now,
+       TIMEDIFF(NOW(), UTC_TIMESTAMP()) AS server_offset,
+       @@global.time_zone AS global_tz, @@system_time_zone AS system_tz,
+       @@session.time_zone AS session_tz, VERSION() AS version;
+```
+DirectAdmin → Terminal:
+```bash
+date; date -u
+php -r 'echo "php default zone: ", date_default_timezone_get(), "  now: ", date("Y-m-d H:i:s T"), PHP_EOL; date_default_timezone_set("Africa/Lagos"); echo "as Lagos: ", date("Y-m-d H:i:s T"), PHP_EOL;'
+```
+If `server_offset` isn't `01:00:00`, that line is what makes WhoGoHost's
+deadlines right. Record the result under step 4b.
+
+### Working notes for a new session
+
+- **Rules:** AGENTS.md, and this file.
+- **MySQL:** start and stop it only with `C:\xampp\mysql_start_clean.bat`
+  and `C:\xampp\mysql_shutdown_clean.bat`, never the XAMPP Control Panel. To
+  run them non-interactively: `"" | cmd /c "C:\xampp\mysql_start_clean.bat"`.
+  MySQL errors go to the Windows Application event log.
+- **PHP versions:** `C:\xampp\php\php.exe` (8.0.30), Herd's
+  `C:\Users\HP\.config\herd\bin\php84\php.exe` (8.4.25), and
+  `C:\php\8.5\php.exe` (8.5.10; WhoGoHost runs 8.5.9). Run every suite on all
+  three: `tests/*_test.php` (`enrollments_list_test` between
+  `setup_users_fixture.php` and `teardown_users_fixture.php`), plus
+  `node --test tests/*.mjs`.
+- **Test ports:** 8088–8099 belong to the suites (see `tests/router.php`).
+  Serve by hand on 8198 or 8199, and stop the server afterwards.
+- **Hand checks:** `php database/dev/handcheck_exam.php` rebuilds the
+  HANDCHECK exam and prints fresh passwords. Passwords never go into this file.
+  The baseline to diff `exam_system` against is
+  `C:\xampp-backups\fingerprints\exam_system-2026-09-21\`, made by
+  `C:\xampp-backups\fingerprints\dump.php <outdir>`. After hand checks, only
+  HANDCHECK rows (subject 4, users 37 and 38) should differ.
+- **Vacuity breaks:** apply each break alone to a pristine copy of the file;
+  run the suite; the named assertion must fail; restore the file and re-check
+  its hash. The repo's PHP files use CRLF line endings.
+- **Pushing:** push to main at every verified checkpoint, after the push
+  checks in AGENTS.md. Never deploy.
 
 Production's commit: unknown, verify on the server before any deploy
 (`git log --oneline -1` on the server). Production must not be touched. `main`
@@ -1269,20 +1326,33 @@ cleanly, with no MySQL warnings or errors in the Application event log.
 AGENTS.md's note on `window_end` now says that it and the latest
 `deadline_at` (plus 5 min) decide when correct answers are shown.
 
-## Multiple-choice options missing when shuffling is off · **Not started**
+## Multiple-choice options missing when shuffling is off · **Not started**, brief approved
 
 Found on 22 Sep 2026 during 4b's hand check 3, and queued at the owner's
 decision: its own small change, with its own brief, **after 4b is closed**
-(4b closed the same day). Next in line, before stage 5.
+(4b closed the same day). **Next in line, before stage 5.** The brief below
+was approved on 22 Sep with the two decisions recorded under it. It was not
+built that day, at the owner's request: build it in a new session.
 Not a 4b regression; the code dates from July.
 
 **The bug:**
-- `Attempt::start()` freezes an option order only when the exam has
-  `shuffle_options = 1`. Otherwise `attempt_questions.option_order` is NULL.
-- `questionsForAttempt()` (the paper) and `reviewForAttempt()` (the result
+- `Attempt::start()` ([Attempt.php:76](app/models/Attempt.php#L76)) freezes
+  an option order only when `(int) $exam['shuffle_options'] === 1`. Otherwise
+  `attempt_questions.option_order` is NULL.
+- `questionsForAttempt()` ([:157](app/models/Attempt.php#L157), the paper)
+  and `reviewForAttempt()` ([:690](app/models/Attempt.php#L690), the result
   page) build a question's options only from `option_order`. A NULL becomes
   `[]`, so every option disappears: the student sees "Select one:" and nothing
-  to choose.
+  to choose, and scores 0 on every multiple-choice question.
+- `shuffle_options` is `TINYINT(1) DEFAULT 1` and **can be NULL**. A NULL
+  also fails the `=== 1` test.
+- **Not affected:**
+  - Grading (`claimAndGrade`) reads the saved answer and the correct option
+    directly.
+  - The Teacher's grading view uses `answersForGrading()`, which lists options
+    in database order.
+  - Saving checks that an option belongs to its question
+    (`optionBelongsToQuestion`), not to the frozen order.
 
 **Why it hasn't happened yet:** no controller or Teacher screen sets
 `shuffle_options`, the column defaults to 1, and on 22 Sep all 7 exams and
@@ -1294,21 +1364,103 @@ database edit, or a future "don't shuffle" option, would trigger it.
 (`lock_test`, `lock_race_test`) never look at options, and `clock_test` uses
 a single essay question.
 
-**The fix to brief, then:**
-- `start()` always freezes the order: shuffled, or in id order when not
-  shuffling.
-- Both readers fall back to id order when `option_order` is NULL, so existing
-  rows show their options too.
-- A `shuffle_options = 0` exam in `paper_test`, asserting every option
-  arrives in id order on the paper and on the result page. Breaks: remove the
-  fallback; let `start()` leave NULL again.
-- No schema change.
+### The brief (approved 2026-09-22)
 
-**Before that fix is deployed:** check the WhoGoHost database for exams with
-`shuffle_options = 0`, and for any attempts on them. A read-only query in
-phpMyAdmin:
-`SELECT id, title, shuffle_options FROM exams WHERE shuffle_options = 0;`
-The brief must say what to do with any it finds.
+**Decisions:**
+1. **Fall back on NULL, on invalid JSON and on `[]`**, not only on NULL.
+2. **Leave `shuffle_options` nullable, and treat NULL as not shuffled.** No
+   schema change and no migration.
+
+**The fix:**
+1. **`start()` always freezes an order** for every multiple-choice question:
+   shuffled when `shuffle_options = 1`, otherwise the option ids in ascending
+   order. NULL counts as not shuffled. The options query gains `ORDER BY id`,
+   so "in order" means the same thing everywhere.
+2. **One helper shared by both readers:**
+   `frozenOptionOrder(?string $json, array $optionIds)`. It returns the frozen
+   list when it is valid, non-empty JSON, and otherwise all the question's
+   option ids in ascending order (NULL, invalid JSON or `[]`). Rows already in
+   a database then show their options without a data migration.
+   `questionsForAttempt()` and `reviewForAttempt()` both use it, and both
+   options queries gain `ORDER BY id`.
+3. **Unchanged:** an option missing from a valid, non-empty frozen order is
+   still not shown, so an option added after a paper was frozen still won't
+   appear mid-exam. That's outside this bug.
+4. **No schema change.**
+
+**Tests, added to `tests/paper_test.php`** (its existing server on 8097; no
+new ports):
+
+| # | Test | Break that must fail it |
+|---|---|---|
+| O1 | A new attempt on a `shuffle_options = 0` exam freezes each multiple-choice question's option ids in ascending order (read from `attempt_questions`) | `start()` leaves NULL again |
+| O2 | That attempt's `POST paper` returns every option, in id order, with its text | Fallback removed from `questionsForAttempt()` and O1's break applied |
+| O3 | An attempt whose `option_order` is set to NULL directly still gets every option on the paper, in id order | Fallback removed from `questionsForAttempt()` |
+| O4 | That same attempt, once submitted, shows every option's text on its result page | Fallback removed from `reviewForAttempt()` only |
+| O5 | An exam with `shuffle_options` NULL behaves like 0 (O1 and O2 hold) | `start()` treats NULL as shuffled, with no order written |
+| O6 | Invalid JSON and `[]` in `option_order` both fall back to id order | Fallback on NULL only |
+| O7 | A shuffled exam is unchanged: its order is still a permutation of all the options | — |
+
+Then every suite on PHP 8.0, 8.4 and 8.5, plus node. Each break is applied
+alone, and each file is restored with its hash checked (see "Working
+notes for a new session" in the status section).
+
+**Hand checks in Edge**, on the real app, HANDCHECK rows only:
+1. **Not shuffled, new attempt.** Set the HANDCHECK exam to
+   `shuffle_options = 0`; the student clicks **Attempt quiz**, then **Enter
+   fullscreen**.
+   - Both multiple-choice questions show all 4 options in their stored order:
+     `x < 5`, `a & b is false`, `x > 5`, `<i>none</i> of these` (the last
+     shown literally); and Lagos, Abuja, Kano, Ibadan.
+   - Answer both; each shows **Saved**.
+2. **An existing broken row.** Set that attempt's `option_order` to NULL.
+   After F5 and fullscreen, the options are still there in the same order,
+   with the answers still selected.
+3. **The result page.** Submit. Every option is listed under each question,
+   with the choices marked.
+4. **A shuffled exam is unchanged.** Set the exam back to
+   `shuffle_options = 1` and rerun the hand-check script. A new attempt shows
+   a shuffled order.
+
+**Afterwards:** rerun the hand-check script, stop MySQL with the clean script,
+and diff `exam_system` against the baseline.
+
+### Before the options fix is deployed: WhoGoHost check
+
+Read-only, in phpMyAdmin → SQL. The owner runs these; there is no SSH.
+
+Exams that don't shuffle:
+```sql
+SELECT id, title, status, shuffle_options, window_start, window_end
+FROM exams
+WHERE shuffle_options = 0 OR shuffle_options IS NULL;
+```
+Attempts already frozen without an order, whatever the exam says now:
+```sql
+SELECT a.id AS attempt_id, a.exam_id, a.student_id, a.status, a.total_score,
+       COUNT(*) AS mcq_without_order
+FROM exam_attempts a
+JOIN attempt_questions aq ON aq.attempt_id = a.id
+JOIN questions q ON q.id = aq.question_id
+WHERE q.question_type = 'mcq' AND aq.option_order IS NULL
+GROUP BY a.id, a.exam_id, a.student_id, a.status, a.total_score;
+```
+What to do with the results. Nothing in production changes without the
+owner's approval.
+- **Both empty:** deploy the fix normally.
+- **Exams found, no attempts:** harmless once the fix is in. Whether to set
+  them back to 1 is the owner's call; nothing in the app sets 0, so a 0 was
+  set by hand.
+- **In-progress attempts found:** those students are sitting a paper with
+  no options. This clashes with the deploy hold ("no deploy until stage 5"),
+  so the owner decides whether it justifies an exception.
+- **Finished attempts found:** their multiple-choice answers are blank and
+  scored 0. The fix can't restore answers. List each attempt for the owner and
+  the subject's Teacher to decide what happens next (for example, a resit).
+  Change no data.
+
+On the laptop, on 22 Sep, local `exam_system` had all 7 exams at 1 and no
+attempt missing an order.
 
 ## Stage 5 — Client lock monitor and overlay · **Not started**
 
