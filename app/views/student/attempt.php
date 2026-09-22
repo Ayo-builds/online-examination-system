@@ -55,7 +55,7 @@
                     <input type="hidden" name="csrf_token" value="<?= Csrf::token() ?>">
                     <button type="submit" class="qbtn qbtn--primary">Attempt quiz</button>
                 </form>
-            <?php elseif ($now < strtotime($exam['window_start'])): ?>
+            <?php elseif ($not_yet_open): ?>
                 <p class="quiz__closed">This exam has not opened yet.</p>
             <?php else: ?>
                 <p class="quiz__closed">This exam has closed.</p>

@@ -3,6 +3,58 @@ class Exam extends Model
 {
     protected string $table = 'exams';
 
+    // Whether the window is open, judged by the database's clock. Every
+    // decision about the window is made from these two flags, never from
+    // PHP's time(): the window was typed in the school's local time and is
+    // compared with NOW() in the same session time zone (Database.php).
+    // Open means neither flag is set, window_start and window_end included.
+    private const WINDOW_FLAGS = "NOW() < e.window_start AS not_yet_open,
+                                  NOW() > e.window_end   AS window_closed";
+
+    public function find(int $id): ?array
+    {
+        $row = $this->query(
+            "SELECT e.*, " . self::WINDOW_FLAGS . " FROM exams e WHERE e.id = ? LIMIT 1",
+            [$id]
+        )->fetch();
+
+        return $row ?: null;
+    }
+
+    /**
+     * When this exam's correct answers may be shown, and whether that time
+     * has come, both on the database's clock.
+     *
+     * Not at window_end alone: an attempt started just before the window
+     * closes runs for its full duration after it, and an invigilator may
+     * one day extend someone's deadline. So the answers wait for the window
+     * to close AND for the latest deadline of any attempt on this exam, plus
+     * the sweep's grace, by which time every paper is closed.
+     *
+     * @return array{reveal_at: string, revealed: bool}
+     */
+    public function answerReveal(int $examId): array
+    {
+        $revealAt = "GREATEST(e.window_end,
+                              COALESCE(MAX(a.deadline_at) + INTERVAL " . Attempt::SWEEP_GRACE_MINUTES . " MINUTE,
+                                       e.window_end))";
+
+        $row = $this->query(
+            "SELECT $revealAt AS reveal_at, NOW() > $revealAt AS revealed
+               FROM exams e
+               LEFT JOIN exam_attempts a ON a.exam_id = e.id
+              WHERE e.id = ?
+              GROUP BY e.id, e.window_end",
+            [$examId]
+        )->fetch();
+
+        if ($row === false) {
+            return ['reveal_at' => '', 'revealed' => false];
+        }
+
+        return ['reveal_at' => $row['reveal_at'], 'revealed' => (int) $row['revealed'] === 1];
+    }
+
     public function byCourse(int $courseId): array
     {
         return $this->query(
@@ -61,6 +113,7 @@ class Exam extends Model
         return $this->query(
             "SELECT e.id, e.title, e.instructions, e.duration_minutes,
                     e.window_start, e.window_end, e.questions_per_attempt,
+                    " . self::WINDOW_FLAGS . ",
                     c.course_code, c.title AS course_title,
                     a.id     AS attempt_id,
                     a.status AS attempt_status

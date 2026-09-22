@@ -10,10 +10,11 @@ class StudentController extends Controller
     {
         $studentId = (int) Auth::user()['id'];
 
+        // Each exam carries not_yet_open and window_closed, judged by the
+        // database's clock. Nothing on this page reads PHP's.
         $this->view('student/dashboard', [
             'user'  => Auth::user(),
             'exams' => (new Exam())->availableForStudent($studentId),
-            'now'   => time(),
         ]);
     }
 
@@ -46,16 +47,15 @@ class StudentController extends Controller
                 : 'student/result/' . (int) $existing['id']);
         }
 
-        $now    = time();
         $course = (new Course())->find((int) $exam['course_id']);
 
+        // The window as the database's clock sees it (Exam::find()).
         $this->view('student/attempt', [
-            'user'   => Auth::user(),
-            'exam'   => $exam,
-            'course' => $course,
-            'now'    => $now,
-            'open'   => $now >= strtotime($exam['window_start'])
-                     && $now <= strtotime($exam['window_end']),
+            'user'         => Auth::user(),
+            'exam'         => $exam,
+            'course'       => $course,
+            'not_yet_open' => (int) $exam['not_yet_open'] === 1,
+            'open'         => (int) $exam['not_yet_open'] === 0 && (int) $exam['window_closed'] === 0,
         ]);
     }
 
@@ -84,9 +84,8 @@ class StudentController extends Controller
             exit('403. You are not enrolled in this subject.');
         }
 
-        // 3. The window must be open right now
-        $now = time();
-        if ($now < strtotime($exam['window_start']) || $now > strtotime($exam['window_end'])) {
+        // 3. The window must be open right now, by the database's clock
+        if ((int) $exam['not_yet_open'] === 1 || (int) $exam['window_closed'] === 1) {
             $this->redirect('student/dashboard');
         }
 
@@ -135,15 +134,17 @@ class StudentController extends Controller
             $this->redirect('student/dashboard');
         }
 
-        // Past the server deadline? Auto-submit instead of showing questions
-        if (strtotime($attempt['deadline_at']) <= time()) {
-            $attemptModel->autoSubmit($attemptId);
+        // Past the deadline, by the database's clock? Close it instead of
+        // showing the page.
+        if ($attemptModel->closeIfExpired($attemptId)) {
             $this->redirect('student/dashboard');
         }
 
+        // The countdown starts from the database's seconds left. The page then
+        // only counts down; the server decides everything.
         $this->view('student/exam', [
             'attempt'   => $attempt,
-            'remaining' => strtotime($attempt['deadline_at']) - time(),  // seconds left
+            'remaining' => max(0, (int) $attempt['seconds_left']),
         ]);
     }
 
@@ -181,8 +182,7 @@ class StudentController extends Controller
 
         // Past the deadline: close it here, exactly as exam() would, rather
         // than handing out a paper nobody may still answer.
-        if (strtotime($attempt['deadline_at']) <= time()) {
-            $attemptModel->autoSubmit($attemptId);
+        if ($attemptModel->closeIfExpired($attemptId)) {
             $this->json(['ok' => false, 'error' => 'closed'], 409);
         }
 
@@ -206,7 +206,7 @@ class StudentController extends Controller
 
         $this->json([
             'ok'        => true,
-            'remaining' => strtotime($attempt['deadline_at']) - time(),
+            'remaining' => max(0, (int) $attempt['seconds_left']),
             'questions' => $questions,
         ]);
     }
@@ -232,9 +232,9 @@ class StudentController extends Controller
             $this->json(['ok' => false, 'error' => 'not_found'], 404);
         }
 
-        // Still open? (status + server deadline)
-        if ($attempt['status'] !== 'in_progress'
-            || strtotime($attempt['deadline_at']) <= time()) {
+        // Already closed? The deadline itself is checked where the answer is
+        // written, on the database's clock (saveAnswerIfWritable).
+        if ($attempt['status'] !== 'in_progress') {
             $this->json(['ok' => false, 'error' => 'closed'], 409);
         }
 
@@ -258,7 +258,8 @@ class StudentController extends Controller
 
         // Paused and past the grace: refused as 'locked', which the page must
         // never mistake for 'closed' - that one submits the paper.
-        $outcome = $attemptModel->saveAnswerIfWritable($attemptId, $questionId, $optionId, $essayText);
+        $savedAt = null;
+        $outcome = $attemptModel->saveAnswerIfWritable($attemptId, $questionId, $optionId, $essayText, $savedAt);
 
         if ($outcome === 'locked') {
             $this->json(['ok' => false, 'error' => 'locked'], 423);
@@ -267,7 +268,7 @@ class StudentController extends Controller
             $this->json(['ok' => false, 'error' => 'closed'], 409);
         }
 
-        $this->json(['ok' => true, 'saved_at' => date('H:i:s')]);
+        $this->json(['ok' => true, 'saved_at' => $savedAt]);
     }
 
     // The ways a page may report that its candidate left the paper. new_session
@@ -320,20 +321,18 @@ class StudentController extends Controller
             $this->json(['ok' => false, 'error' => 'bad_trigger'], 422);
         }
 
-        // Past its deadline: close it rather than pause it. Whether it is still
-        // in progress is not checked out here: lock() decides that inside its
-        // own UPDATE, where a submit arriving at the same instant cannot slip
-        // between the check and the pause.
-        if ($attempt['status'] === 'in_progress' && strtotime($attempt['deadline_at']) <= time()) {
-            $attemptModel->autoSubmit($attemptId);
-            $this->json(['ok' => false, 'error' => 'closed'], 409);
-        }
-
+        // Whether it is still in progress and inside its deadline is not
+        // checked out here: lock() decides both inside its own UPDATE, on the
+        // database's clock, where a submit arriving at the same instant cannot
+        // slip between the check and the pause.
         $blurMs = $trigger === 'window_blur' ? self::blurMilliseconds($_POST['blur_ms'] ?? null) : null;
 
         $outcome = $attemptModel->lock($attemptId, $trigger, $blurMs);
 
+        // Nothing to pause. If that is because the deadline has passed, close
+        // the paper rather than leave it for the sweep.
         if ($outcome === 'closed') {
+            $attemptModel->closeIfExpired($attemptId);
             $this->json(['ok' => false, 'error' => 'closed'], 409);
         }
 
@@ -459,14 +458,12 @@ class StudentController extends Controller
         // POST are never read: what is graded is what saveAnswer stored, so a
         // paused candidate cannot slip changed answers in through Submit.
         if ($attempt['status'] === 'in_progress') {
-            // Deadline passed? Grade as auto_submitted; else a normal submit.
-            $status = strtotime($attempt['deadline_at']) <= time()
-                    ? 'auto_submitted' : 'submitted';
-
-            // Refused while paused, by the claim inside submitAndGrade() rather
-            // than a check here that a pause could slip past. Back to the paper,
-            // which is where a paused candidate is told why.
-            if ($attemptModel->submitAndGrade($attemptId, $status, $unsaved) === null) {
+            // Submitted or auto_submitted (deadline passed) is decided inside
+            // submitAndGrade(), on the database's clock. So is the refusal
+            // while paused, by its claim rather than a check here that a pause
+            // could slip past. Back to the paper, which is where a paused
+            // candidate is told why.
+            if ($attemptModel->submitAndGrade($attemptId, $unsaved) === null) {
                 $now = $attemptModel->findOwned($attemptId, $studentId);
                 if ($now !== null && $now['status'] === 'in_progress') {
                     $this->redirect('student/exam/' . $attemptId);
@@ -492,17 +489,20 @@ class StudentController extends Controller
 
         $exam = (new Exam())->find((int) $attempt['exam_id']);
 
-        // Correct answers stay hidden until the whole window has closed.
-        // Students sit at different times inside a window, so revealing them at
-        // submission would hand the first finisher an answer key for everyone
-        // still to sit the paper.
-        $canReview = $exam !== null && time() > strtotime($exam['window_end']);
+        // Correct answers stay hidden until the window has closed AND every
+        // attempt on this exam is past its deadline plus the sweep's grace,
+        // judged by the database's clock (Exam::answerReveal()). Students sit
+        // at different times, and one who starts just before the window closes
+        // sits on after it; revealing earlier would hand an answer key to
+        // someone still sitting the paper.
+        $reveal = (new Exam())->answerReveal((int) $attempt['exam_id']);
 
         $this->view('student/result', [
             'attempt'    => $attempt,
             'exam'       => $exam,
             'answers'    => $attemptModel->reviewForAttempt($attemptId),
-            'can_review' => $canReview,
+            'can_review' => $exam !== null && $reveal['revealed'],
+            'reveal_at'  => $reveal['reveal_at'],
             'max_marks'  => $attemptModel->maxMarks($attemptId),
         ]);
     }

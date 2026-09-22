@@ -17,7 +17,22 @@ class Database
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                     PDO::ATTR_EMULATE_PREPARES   => false,
                 ]);
-                // Align MySQL's session clock with PHP's (+01:00 = WAT / Africa/Lagos)
+                // Pin which wall clock NOW() reads: West Africa Time, +01:00.
+                //
+                // Every deadline and window decision compares a stored
+                // DATETIME with NOW() in SQL (step 4b). A DATETIME carries no
+                // time zone: it means whatever NOW() meant when it was written,
+                // and teachers type windows in Lagos time. So NOW() must be
+                // Lagos time on every server, whatever that server's own zone
+                // setting says. Only its actual time must be right. Added on
+                // 20 Jul 2026 (b861c45) after PHP and MySQL disagreed on a
+                // deadline; a shared host whose MySQL runs on UTC is an hour
+                // behind without it.
+                //
+                // An offset, not 'Africa/Lagos': a named zone needs MySQL's
+                // time-zone tables, which XAMPP and most shared hosts lack.
+                // Nigeria has no daylight saving, so +01:00 is always exact.
+                // tests/clock_test.php (C11) fails if this line goes.
                 self::$instance->exec("SET time_zone = '+01:00'");
             } catch (PDOException $e) {
                 // Thrown, not echoed: ErrorHandler answers in the route's own

@@ -425,7 +425,7 @@ $before = attempt_snapshot($attempts['abandoned']);
 // What a sweep or a late submit arriving second would do.
 same('closing it again reports that nothing was closed', false, (new Attempt())->autoSubmit($attempts['abandoned']));
 same('a late submit arriving second is a no-op too', null,
-    (new Attempt())->submitAndGrade($attempts['abandoned'], 'auto_submitted', 3));
+    (new Attempt())->submitAndGrade($attempts['abandoned'], 3));
 
 $after = attempt_snapshot($attempts['abandoned']);
 $stmt->execute([$attempts['abandoned'], $essayId]);

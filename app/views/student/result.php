@@ -2,9 +2,10 @@
 /**
  * Attempt review.
  *
- * $can_review is decided in the controller: correct answers appear only once
- * the exam window has closed for everyone. Until then this page shows the
- * result and the per-question marks, but never which option was right.
+ * $can_review is decided in the controller, on the database's clock: correct
+ * answers appear only once the window has closed and every attempt is past
+ * its deadline plus the sweep's grace ($reveal_at). Until then this page shows
+ * the result and the per-question marks, but never which option was right.
  */
 $score    = (float) $attempt['total_score'];
 $maxMarks = (float) $max_marks;
@@ -126,8 +127,9 @@ if ($ended !== null) {
                 <?php if (!$can_review): ?>
                     <p class="quiz__notice">
                         Your paper is shown below, but correct answers and per-question
-                        marks stay hidden until the exam window closes on
-                        <?= date('j F Y, g:i A', strtotime($exam['window_end'])) ?>,
+                        marks stay hidden until the exam window has closed and every
+                        candidate has finished, not before
+                        <?= date('j F Y, g:i A', strtotime($reveal_at)) ?>,
                         because other candidates may still be sitting it.
                     </p>
                 <?php endif; ?>

@@ -27,7 +27,7 @@ Source messages are cited as `#n`, the record index in the transcript.
 | 3 | Migration 007 | **Done**, applied to local `exam_system` | `21f2d03` |
 | 4 | Server lock core | **Done**, hand checks completed 2026-09-21 | `cbdb96e` |
 | — | Error handling: an exception handler in the front controller, plus `register_shutdown_function` (before 4b) | **Done**, hand checks completed 2026-09-22 | `c92cf9c` |
-| 4b | Every deadline decision on the database clock | **Not started** | — |
+| 4b | Every deadline decision on the database clock | **Built and tested**, hand checks pending | see Part 4 |
 | 5 | Client lock monitor and overlay | **Not started** | — |
 | 6 | Invigilator screen, read only | **Not started** | — |
 | 7 | Claim, code, unlock at the seat | **Not started** | — |
@@ -39,7 +39,7 @@ Source messages are cited as `#n`, the record index in the transcript.
 Every stage 4 hand check has passed. The results are under stage 4 in Part 4.
 The error handling (the error handler from the 16 Sep 1467 brief) is done:
 built, tested, and hand-checked on 22 Sep. Its section in Part 4 comes straight
-after stage 4. Next is step 4b.
+after stage 4. Step 4b is built and tested; its hand checks are next.
 
 Production's commit: unknown, verify on the server before any deploy
 (`git log --oneline -1` on the server). Production must not be touched. `main`
@@ -1067,9 +1067,9 @@ fingerprints differed from the 21 Sep baseline only in HANDCHECK rows (subject
 lock tables were unchanged. MySQL shut down cleanly, with no MySQL warnings or
 errors in the Application event log.
 
-## Step 4b — Every deadline decision on the database clock · **Not started**
+## Step 4b — Every deadline decision on the database clock · **Built and tested**, hand checks pending
 
-Brief: NOT FOUND IN TRANSCRIPT. No brief was written; 4b was created at `#917` and filed at `#1178`, and work was stopped before it began.
+The original filing, from 16 Sep: no brief was written then; 4b was created at `#917` and filed at `#1178`, and work was stopped before it began. The brief was written and approved on 22 Sep 2026; see "Added 2026-09-22" below.
 
 Filed (`#1178`):
 
@@ -1081,6 +1081,147 @@ Filed (`#1178`):
 The question that produced it (`#914`):
 
 > The **existing deadline checks** still compare `deadline_at` with PHP's `time()`. That covers `exam()`, `paper()`, `saveAnswer()` and `submitExam()`, plus the countdown the exam page is given. It's the same clock disagreement your note describes, but it isn't lock timing, so stage 4 leaves it alone. Moving those checks onto the database clock would be its own small change with its own tests.
+
+### Added 2026-09-22: the brief, as approved
+
+**Scope:** every decision about a student's attempt that depended on PHP's
+clock now compares a stored time with `NOW()` in SQL. The approved changes
+added the window decisions and a new rule for when correct answers are shown.
+
+| Decision | Before | Now |
+|---|---|---|
+| `exam()`: past the deadline → close; the countdown's start | `strtotime(deadline_at)` vs `time()` | `findOwned()` returns `seconds_left` and `expired` from SQL; closing is `Attempt::closeIfExpired()`, one `UPDATE … AND deadline_at <= NOW()` decided by its row count |
+| `paper()`: close or serve, and its `remaining` | PHP | The same |
+| `saveAnswer()`: accept or `409 closed` | PHP, in the controller | `deadline_at > NOW()` inside the `FOR UPDATE` read in `saveAnswerIfWritable()`, so the check and the write share one transaction. `saved_at` also comes from `NOW()` |
+| `lock()`: close instead of pausing | PHP check before the model | The model's UPDATE already had `deadline_at > NOW()`; on `closed`, `closeIfExpired()` |
+| `submitExam()`: `submitted` or `auto_submitted` | PHP, passed into `submitAndGrade()` | `IF(deadline_at <= NOW(), 'auto_submitted', 'submitted')` in the claim; `submitAndGrade()` no longer takes a status |
+| `startExam()`, `attempt()`, the dashboard: is the window open | PHP | `Exam::find()` and `availableForStudent()` return `not_yet_open` and `window_closed` from SQL |
+| `result()`: when correct answers are shown | `time() > window_end` | See below |
+
+The sweep, the pause, the heartbeat and `start()` were already on the
+database clock.
+
+**Correct answers: a new rule.** The old rule revealed answers at
+`window_end`, but `deadline_at` is start time plus duration with no cap at
+`window_end`. So a candidate who started just before the window closed could
+still be sitting while someone who had finished read the answer key.
+`Exam::answerReveal()` now reveals only once `NOW()` is past **both**
+`window_end` **and** the latest `deadline_at` among all of that exam's attempts
+plus the sweep's 5-minute grace. It is one SQL statement:
+`GREATEST(window_end, COALESCE(MAX(deadline_at) + INTERVAL 5 MINUTE,
+window_end))`. So an invigilator extending a deadline in future can never
+reveal answers while that candidate is still sitting.
+- **Every attempt counts, submitted or not.** An early finisher's own
+  deadline can hold the answers back, by at most one exam's duration after the
+  window closes.
+- **The result page's wording** now reads: hidden "until the exam window has
+  closed and every candidate has finished, not before" that time.
+
+**Left out on purpose:**
+- `LecturerController`'s "window end must be in the future" check (create
+  exam, and publishing from the pool page). It still uses PHP's clock. It
+  decides nothing about a student's result, and was left out at the owner's
+  decision.
+- The sign-in lockout in `Auth.php`. It is PHP on both sides, so it's
+  consistent with itself.
+
+**Database.php:21, `SET time_zone = '+01:00'`: kept, and it matters more
+now.**
+- Every decision compares a DATETIME with `NOW()`. A DATETIME has no time
+  zone and means whatever `NOW()` meant when it was written; teachers type
+  windows in Lagos time. So `NOW()` must be Lagos time on every server,
+  whatever that server's own zone says.
+- Added on 20 Jul 2026 (`b861c45`, "fix PHP/MySQL timezone alignment for
+  server deadline"). No record names WhoGoHost's clock; the owner is checking
+  that separately with a read-only phpMyAdmin query.
+- A fixed offset, not `'Africa/Lagos'`, because named zones need MySQL's
+  time-zone tables. Nigeria has no daylight saving.
+- The comment on the line now says all this, and test C11 fails if the line
+  goes.
+
+**Column types:**
+- Every column used in a decision is DATETIME: `deadline_at`, `started_at`,
+  `submitted_at`, `closed_by_system_at`, `locked_at`, `last_seen_at`,
+  `window_start`, `window_end`, the lock and event times, and `graded_at`.
+- Only some `created_at` columns and `attempt_answers.updated_at` are
+  TIMESTAMP. They are converted through the session zone, and decide nothing.
+- **Laptop:** its system zone is Lagos, so the line changes nothing there.
+- **A school server:** a wrong Windows time zone becomes harmless; only the
+  actual time must be right.
+- **WhoGoHost:** to be confirmed by the owner's query.
+
+**L8's control, replaced rather than deleted:**
+- **Before:** it proved the offset by comparing the page's countdown (then
+  PHP's arithmetic) with the heartbeat's (the database's).
+- **Why it had to change:** after 4b both come from the database, so they
+  agree.
+- **Now:** `tests/router.php` (test-only) sends the server's own PHP wall
+  clock as `X-Test-Php-Now`, and the control requires it to be more than 11 h
+  from the database's `NOW()`.
+- **The old comparison** became a positive test, C2: the page and the
+  heartbeat must agree within 2 s.
+
+**Tests:** [clock_test.php](tests/clock_test.php) runs three servers on the
+test database.
+- **Servers:** 8090 has PHP and the database agreeing, 8089 has PHP 12 h
+  behind (`config.clock_offset.php`), and 8088 has PHP 13 h ahead (the new
+  `config.clock_offset_east.php`).
+- **Why both offsets:** a PHP-clock decision fails on one or the other. With
+  PHP behind, every stored time reads 12 h later: deadlines accept too late,
+  and a window that opened an hour ago looks 11 h away, so starting is refused.
+  With PHP ahead, everything reads 13 h earlier: papers close too early, and a
+  window that closes in 3 s already looks closed. So between them, both
+  window edges and the deadline are each caught.
+- **How times are set:** by moving `deadline_at` or a window edge with
+  `NOW() ± INTERVAL`, never by sleeping.
+
+| # | Test | Break that must fail it |
+|---|---|---|
+| C1 | Control: each server's PHP clock is 0, −12 h or +13 h from the database's | Offset removed from the config (also L8's control) |
+| C2 | Page countdown vs heartbeat within 2 s, and about an hour | `exam()` back to `strtotime() - time()` |
+| C3 | The paper's `remaining` vs heartbeat within 2 s | `paper()` back to PHP |
+| C4 | A save 3 s before the deadline: 200 and stored. 3 s after: `409 closed`, answer unchanged. `saved_at` is the database's time | The PHP check restored; the SQL deadline condition removed |
+| C5 | `GET exam`: 3 s before, served; 3 s after, closed by the system | `exam()` in PHP; `closeIfExpired()` without its deadline condition |
+| C6 | `POST paper`: the same | `paper()` in PHP |
+| C7 | Submit 3 s before: `submitted`; 3 s after: `auto_submitted` | The status chosen with PHP's clock |
+| C8 | Pause 3 s before: paused; 3 s after: `409`, no lock row, closed | The PHP check restored in `lock()` |
+| C9 | Sweep: 5 min 3 s past, swept; 4 min 57 s past, left | The sweep's cutoff computed in PHP |
+| C10 | Window, 3 s either side of each edge: the dashboard, the instructions page and `startExam` | Each of the three put back on PHP's clock |
+| C11 | Session zone `+01:00`; `NOW()` is UTC plus one hour | `Database.php:21` removed |
+| C13 | `StudentController` calls no `time()`, `strtotime()` or `date()`; the dashboard and attempt views use no `$now` | A `time()` call added |
+| C14 | Answers: window closed but someone still sitting, hidden; 4 min 57 s after the last deadline, hidden; 5 min 3 s after, shown; window still open with every deadline long past, hidden | The old `window_end`-only rule; grace dropped; window ignored; decided in PHP |
+
+**Results, 22 Sep 2026:**
+- **clock_test.php:** 143 passed, 0 failed on each of PHP 8.0.30, 8.4.25 and
+  8.5.10.
+- **lock_test.php:** 173 passed with L8's new control, on all three versions.
+- **Every other suite, on all three:** autosave 47, sweep 80, paper 53, lock
+  race 17, schema 007 260, error 134, enrolments 120, all passing; node 55
+  passing.
+- **Vacuity:** 21 breaks, each applied alone and restored with its hash
+  re-checked. All 21 were caught by the assertions they target. Most restore
+  the exact pre-4b PHP-clock code, so the suite is shown to fail against what
+  4b replaced.
+- **K09 and K10 (window checks in PHP):** my first prediction of which
+  assertion would fail was wrong, not the test. With PHP behind, the start
+  edge dominates, so every start is refused, including the one that should be
+  refused anyway. The failing assertions are the start edge on the behind
+  server and the end edge on the ahead server.
+- **Found while writing C14:** every attempt's deadline counts toward the
+  reveal, submitted or not, as specified. A test that forgot this failed
+  first, and was corrected.
+
+**Hand checks (pending), in Edge:**
+1. **The real app, normal clock:** the timer starts at about 30:00, the
+   heartbeat's `remaining` matches it within 2 s, and F5 doesn't restart it.
+2. **The deadline, for real:** the HANDCHECK attempt's deadline is moved 90 s
+   out. The page counts down, a save before zero is **Saved**, and at 0:00 the
+   page submits itself, closing as `auto_submitted`. **This also covers the
+   open item "auto-submit at zero with the tab left open"** (not previously
+   written into this file).
+3. **A wrong PHP clock:** on test servers with PHP 12 h behind, then 13 h
+   ahead. The timer starts right, a save before the moved deadline is
+   **Saved**, and one after it is refused.
 
 ## Stage 5 — Client lock monitor and overlay · **Not started**
 
@@ -1247,6 +1388,12 @@ deployment-checklist items, not application changes.
   to PHP's own `error_log` instead, which is easy to miss. After the deploy,
   confirm that `logs/` (or the `ERROR_LOG_FILE` directory) exists and is
   writable, for example in cPanel's File Manager.
+- **After step 4b, rewrite OFFLINE-DEPLOYMENT.md step 5 ("Make the two clocks
+  agree").** Every decision now uses the database's clock, pinned to +01:00 by
+  `Database.php`, so PHP's time zone only affects how dates are displayed. What
+  matters is that the machine's actual time is right, and that config's
+  display zone is `Africa/Lagos`. The step should say that instead of asking
+  for the two clocks to be matched.
 - **Hide server versions on school servers:** set `ServerTokens Prod` and
   `ServerSignature Off` in Apache's `httpd.conf`, and restart Apache. On the
   dev laptop, Apache's own 403 page (from the hand check on

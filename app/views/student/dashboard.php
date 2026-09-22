@@ -23,9 +23,12 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
     <?php else: ?>
         <?php foreach ($exams as $e): ?>
         <?php
-            $startTs  = strtotime($e['window_start']);
-            $endTs    = strtotime($e['window_end']);
-            $inWindow = ($now >= $startTs && $now <= $endTs);
+            // Display only: the times as stored. Whether the window is open
+            // comes from the database's clock (Exam::availableForStudent).
+            $startTs    = strtotime($e['window_start']);
+            $endTs      = strtotime($e['window_end']);
+            $notYetOpen = (int) $e['not_yet_open'] === 1;
+            $inWindow   = !$notYetOpen && (int) $e['window_closed'] === 0;
         ?>
         <div class="card">
             <div class="card__head">
@@ -55,7 +58,7 @@ require APP_ROOT . '/app/views/_partials/page_head.php'; ?>
                         <a href="<?= BASE_URL ?>student/result/<?= (int) $e['attempt_id'] ?>"
                            class="btn btn--secondary btn--sm">View result</a>
 
-                    <?php elseif (!$inWindow && $now < $startTs): ?>
+                    <?php elseif ($notYetOpen): ?>
                         <span class="tag tag--muted">Not open yet</span>
 
                     <?php elseif (!$inWindow): ?>

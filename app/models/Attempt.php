@@ -97,12 +97,18 @@ class Attempt extends Model
         }
     }
 
-    // The attempt, but ONLY if it belongs to this student
+    // The attempt, but ONLY if it belongs to this student.
+    //
+    // seconds_left and expired are the database's view of the deadline, and
+    // the only one: the page's countdown starts from seconds_left, and no
+    // caller compares deadline_at with PHP's clock.
     public function findOwned(int $attemptId, int $studentId): ?array
     {
         $row = $this->query(
             "SELECT a.*, e.title AS exam_title, e.instructions,
-                    c.course_code
+                    c.course_code,
+                    TIMESTAMPDIFF(SECOND, NOW(), a.deadline_at) AS seconds_left,
+                    a.deadline_at <= NOW() AS expired
              FROM exam_attempts a
              JOIN exams e   ON e.id = a.exam_id
              JOIN courses c ON c.id = e.course_id
@@ -186,6 +192,22 @@ class Attempt extends Model
         ) !== null;
     }
 
+    // Close this attempt if its deadline has passed, by the database's clock.
+    // Returns true only when this call closed it. The decision is the row
+    // count of the one UPDATE that closes it, so no check can go stale
+    // between deciding and doing. Otherwise exactly autoSubmit().
+    public function closeIfExpired(int $attemptId): bool
+    {
+        return $this->claimAndGrade(
+            "UPDATE exam_attempts
+             SET status = 'auto_submitted', submitted_at = deadline_at,
+                 closed_by_system_at = NOW()
+             WHERE id = ? AND status = 'in_progress' AND deadline_at <= NOW()",
+            [$attemptId],
+            $attemptId
+        ) !== null;
+    }
+
     // Close every attempt whose candidate never came back. Returns how many.
     //
     // Otherwise an attempt is closed only by its own student. One who never
@@ -235,10 +257,11 @@ class Attempt extends Model
 
     // ---- Pausing ------------------------------------------------------------
     //
-    // Every time below comes from the database's NOW(), never PHP's clock. The
-    // two already disagree in this codebase (deadline_at is written by MySQL
-    // and has been compared in PHP), and a pause measured by one clock and
-    // enforced by the other would open or shut the save window by hours.
+    // Every time below comes from the database's NOW(), never PHP's clock, as
+    // every deadline and window decision in the app does (step 4b). PHP's
+    // clock can read a stored time hours out if its time zone is not the
+    // database session's, and a pause measured by one clock and enforced by
+    // the other would open or shut the save window by hours.
 
     // Pause this attempt because the candidate left the paper. Returns
     // 'locked' for a new pause, 'appended' when it was already paused and this
@@ -300,20 +323,24 @@ class Attempt extends Model
         }
     }
 
-    // Save one answer unless the attempt is paused and the grace has run out.
-    // Returns 'saved', 'locked' or 'closed'.
+    // Save one answer unless the attempt is closed, past its deadline, or
+    // paused past the grace. Returns 'saved', 'locked' or 'closed', and sets
+    // $savedAt to the database's time of day when it saved.
     //
-    // The window is decided in the same statement that reads the attempt, on
-    // the database's clock, and the row stays locked until the answer is
-    // written, so a pause cannot land between the check and the write.
-    public function saveAnswerIfWritable(int $attemptId, int $questionId, ?int $optionId, ?string $essayText): string
+    // The deadline and the pause window are decided in the same statement
+    // that reads the attempt, on the database's clock, and the row stays
+    // locked until the answer is written, so neither a pause nor the deadline
+    // can land between the check and the write.
+    public function saveAnswerIfWritable(int $attemptId, int $questionId, ?int $optionId, ?string $essayText,
+                                         ?string &$savedAt = null): string
     {
         try {
             $this->db->beginTransaction();
 
             $row = $this->query(
-                "SELECT status = 'in_progress' AS open,
-                        locked_at IS NULL OR NOW() <= locked_at + INTERVAL " . self::SAVE_GRACE_SECONDS . " SECOND AS writable
+                "SELECT status = 'in_progress' AND deadline_at > NOW() AS open,
+                        locked_at IS NULL OR NOW() <= locked_at + INTERVAL " . self::SAVE_GRACE_SECONDS . " SECOND AS writable,
+                        DATE_FORMAT(NOW(), '%H:%i:%s') AS clock
                    FROM exam_attempts WHERE id = ? FOR UPDATE",
                 [$attemptId]
             )->fetch();
@@ -329,6 +356,7 @@ class Attempt extends Model
 
             $this->saveAnswer($attemptId, $questionId, $optionId, $essayText);
             $this->db->commit();
+            $savedAt = $row['clock'];
             return 'saved';
 
         } catch (Throwable $e) {
@@ -424,13 +452,14 @@ class Attempt extends Model
     // It is recorded, never acted on: a failed save must not cost a student
     // marks, so it changes nothing about grading and only tells the school
     // afterwards that this paper was submitted with saves in flight.
-    public function submitAndGrade(
-        int $attemptId,
-        string $finalStatus = 'submitted',
-        int $unsavedAtSubmit = 0
-    ): ?array {
+    public function submitAndGrade(int $attemptId, int $unsavedAtSubmit = 0): ?array
+    {
         // The unsaved count rides along in the claim itself, so a paper can
         // never be marked submitted without the record of how it was.
+        //
+        // Submitted in time or not is decided here too, on the database's
+        // clock: at or past deadline_at it is auto_submitted, the label the
+        // teacher and the student see. No caller passes a status in.
         //
         // A paused attempt cannot be submitted, and that is decided here, in
         // the claim, not by a check before it: a pause arriving between a check
@@ -439,9 +468,10 @@ class Attempt extends Model
         // paused paper must still close at its deadline.
         return $this->claimAndGrade(
             "UPDATE exam_attempts
-             SET status = ?, submitted_at = NOW(), unsaved_at_submit = ?
+             SET status = IF(deadline_at <= NOW(), 'auto_submitted', 'submitted'),
+                 submitted_at = NOW(), unsaved_at_submit = ?
              WHERE id = ? AND status = 'in_progress' AND locked_at IS NULL",
-            [$finalStatus, $unsavedAtSubmit, $attemptId],
+            [$unsavedAtSubmit, $attemptId],
             $attemptId
         );
     }

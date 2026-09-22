@@ -85,7 +85,7 @@ register_shutdown_function(static function () use (&$jars): void {
 });
 
 /**
- * @return array{status:int, body:string, json:?array, location:string}
+ * @return array{status:int, body:string, json:?array, location:string, headers:array<string,string>}
  */
 function http(string $who, string $method, string $path, array $post = [], string $server = 'main'): array
 {
@@ -125,6 +125,7 @@ function http(string $who, string $method, string $path, array $post = [], strin
         'body'     => $body,
         'json'     => is_array($json) ? $json : null,
         'location' => $headers['location'] ?? '',
+        'headers'  => $headers,
     ];
 }
 
@@ -464,16 +465,18 @@ $offsetToken = sign_in('ada_offset', 'ADM/LOCK/1', $pass, 'offset');
 $a8 = fresh_attempt('ada');
 
 // The control: prove the two clocks really disagree on this server before
-// trusting anything below. The exam page's countdown is PHP's arithmetic; the
-// heartbeat's is the database's.
+// trusting anything below. It used to compare the exam page's countdown (then
+// PHP's arithmetic) with the heartbeat's (the database's). Since step 4b both
+// come from the database and agree, so that comparison became a positive test
+// in clock_test.php (C2). The control now reads the server's own PHP clock,
+// which tests/router.php sends as X-Test-Php-Now, against the database's.
 $page = http('ada_offset', 'GET', "student/exam/$a8", [], 'offset');
-preg_match('/const remaining = (-?\d+);/', $page['body'], $m);
-$phpRemaining = isset($m[1]) ? (int) $m[1] : null;
-$beat = http('ada_offset', 'POST', "student/heartbeat/$a8", ['csrf_token' => $offsetToken], 'offset');
-$dbRemaining = $beat['json']['remaining'] ?? null;
+$phpNow = $page['headers']['x-test-php-now'] ?? null;
+$dbNow  = (string) scalar("SELECT NOW()");
+$apart  = $phpNow === null ? null : abs(strtotime($phpNow) - strtotime($dbNow));
 check('L8 control: PHP and the database disagree about the time by more than 11 hours on this server',
-    $phpRemaining !== null && $dbRemaining !== null && abs($phpRemaining - $dbRemaining) > 11 * 3600,
-    "PHP says $phpRemaining s left, the database says $dbRemaining s");
+    $apart !== null && $apart > 11 * 3600,
+    "PHP's clock reads " . var_export($phpNow, true) . ", the database's $dbNow");
 
 $res = $lock($a8, ['trigger' => 'tab_hidden'], 'ada_offset', $offsetToken, 'offset');
 same('L8 the offset server pauses the attempt', true, $res['json']['new'] ?? null);
