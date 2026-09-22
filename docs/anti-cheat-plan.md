@@ -26,7 +26,7 @@ Source messages are cited as `#n`, the record index in the transcript.
 | — | Hand-check dev script (support, not a numbered stage) | **Done** | `d5b5a37` |
 | 3 | Migration 007 | **Done**, applied to local `exam_system` | `21f2d03` |
 | 4 | Server lock core | **Done**, hand checks completed 2026-09-21 | `cbdb96e` |
-| — | Error handling: an exception handler in the front controller, plus `register_shutdown_function` (before 4b) | **Built and tested**, hand checks pending | see Part 4 |
+| — | Error handling: an exception handler in the front controller, plus `register_shutdown_function` (before 4b) | **Done**, hand checks completed 2026-09-22 | `c92cf9c` |
 | 4b | Every deadline decision on the database clock | **Not started** | — |
 | 5 | Client lock monitor and overlay | **Not started** | — |
 | 6 | Invigilator screen, read only | **Not started** | — |
@@ -37,9 +37,9 @@ Source messages are cited as `#n`, the record index in the transcript.
 | 11 | Words and docs | **Not started** | — |
 
 Every stage 4 hand check has passed. The results are under stage 4 in Part 4.
-The error handling (the error handler from the 16 Sep 1467 brief) is built and
-tested. Its hand checks come next; step 4b comes after them. Its section in
-Part 4 comes straight after stage 4.
+The error handling (the error handler from the 16 Sep 1467 brief) is done:
+built, tested, and hand-checked on 22 Sep. Its section in Part 4 comes straight
+after stage 4. Next is step 4b.
 
 Production's commit: unknown, verify on the server before any deploy
 (`git log --oneline -1` on the server). Production must not be touched. `main`
@@ -842,10 +842,13 @@ Known interim quirk until stage 5 (`#1178`):
   clean start and stop scripts in `scripts/windows/`, so the experiment is no
   longer needed. `exam_system_test_autoinc` held only the four empty probe
   tables and was dropped on 21 Sep 2026.
-- The 16 Sep brief's other asks are still open: JSON endpoints must return
-  HTTP 500 with a small JSON error when they throw, with no stack trace and no
-  file paths (the error handler), and the proposal must say what production
-  shows today with `display_errors`.
+- The 16 Sep brief's other asks were open until 22 Sep: JSON endpoints must
+  return HTTP 500 with a small JSON error when they throw, with no stack trace
+  and no file paths (the error handler), and the proposal must say what
+  production shows today with `display_errors`. The error handler is now done
+  (`c92cf9c`, see "Error handling" below). It sets `display_errors` from config,
+  off unless `DISPLAY_ERRORS` is true, so what a server shows no longer depends
+  on its php.ini.
 
 **Hand checks: all passed.** The first six passed before 21 Sep: lock, second
 trigger, one lock row with both triggers, saves refused with 423, paper
@@ -902,7 +905,7 @@ and both were caught:
 R4 also caught the first break under a real race. No commit since `cbdb96e`
 has touched `app/` or `tests/`.
 
-## Error handling (before 4b) · **Built and tested**, hand checks pending
+## Error handling (before 4b) · **Done**, `c92cf9c`
 
 Added 2026-09-22. Brief sent and approved on 21–22 Sep, with the changes
 folded in below. It closes the error-handler item left open by the 16 Sep 1467
@@ -1021,13 +1024,48 @@ and touch no database, and CLI scripts.
 - **Apache smoke check on the laptop:** `/fault/memory` is 404;
   `logs/app-errors.log`, `logs/.htaccess` and `config/config.php` are 403.
 
-**Hand checks (pending), in Edge:**
-1. A page route error with details shown on the laptop.
-2. The same with `DISPLAY_ERRORS` false: code only, nothing in the source.
-3. A JSON route error from the console, then autosave recovering once MySQL
-   is back.
-4. A fatal on the test server, and `/fault/memory` a 404 on Apache.
-5. `logs/app-errors.log` is 403 over HTTP.
+### Added 2026-09-22: hand checks, all passed
+
+Done in Edge on the laptop's XAMPP (PHP 8.0.30), with the HANDCHECK accounts.
+MySQL was stopped and started with the clean scripts to cause real database
+failures. Every code on screen was matched to exactly one line in the log.
+
+1. **Page route error, details on.** As the Teacher, with MySQL stopped,
+   Dashboard returned 500 with code `GZ49-Y3V4` and the details below it. The
+   log line: `RuntimeException "Database connection failed. (caused by
+   PDOException: SQLSTATE[HY000] [2002] …)" app/core/Database.php:26 | GET
+   /lecturer/dashboard | user 37 | tx=none`. It was the only dashboard request
+   in Apache's access log (1,948 bytes).
+2. **Details off.** With `DISPLAY_ERRORS` false, F5 gave `SYFA-FSCH` and no
+   details (752 bytes). Ctrl+U re-requested the page and gave `KD6F-B3NU`;
+   `.php`, `SQLSTATE` and "Database connection" were each found 0 times in the
+   source. Both codes are logged, one line each. The setting was put back to
+   `true`.
+3. **JSON route error and recovery.** As the Student on attempt 10 (exam 15),
+   with MySQL stopped, `post('heartbeat')` returned 500
+   `{"ok":false,"error":"server","id":"XFB6-2BBK"}`, logged as `POST
+   /student/heartbeat/10 | user 38`. Changing the capital-of-Nigeria answer
+   from Abuja to Ibadan showed NOT SAVED, never closed, and the page did not
+   submit. The save queue retried with growing gaps: **8** saves got a 46-byte
+   JSON 500 between 11:53:52 and 11:55:06, each with its own logged id. With
+   MySQL back, the retry at 11:55:25 got 200, and question 40 held option 88,
+   Ibadan. The attempt stayed in progress and unlocked.
+4. **Fatal error.** On a `php -S` test server (8199, test database, faults on,
+   details undefined), `/fault/memory` returned 500 with code `T7W5-RVXG` and
+   no details. The test log: `fatal E_ERROR "Allowed memory size of 16777216
+   bytes exhausted (tried to allocate 1052672 bytes)"
+   tests/faults/FaultController.php:50 | GET /fault/memory | tx=none`. On
+   Apache, `/exam-system/public/fault/memory` gave the app's own 404 page. The
+   server was stopped and port 8199 checked free.
+5. **Log not served.** `http://localhost/exam-system/logs/app-errors.log` gave
+   Apache's 403 Forbidden. That page shows the Apache, OpenSSL and PHP
+   versions; hiding them is now on stage 11's checklist.
+
+**Afterwards:** the hand-check script removed attempt 10. The `exam_system`
+fingerprints differed from the 21 Sep baseline only in HANDCHECK rows (subject
+4, exam 16, and users 37 and 38's password hashes). `login_attempts` and the
+lock tables were unchanged. MySQL shut down cleanly, with no MySQL warnings or
+errors in the Application event log.
 
 ## Step 4b — Every deadline decision on the database clock · **Not started**
 
@@ -1209,6 +1247,12 @@ deployment-checklist items, not application changes.
   to PHP's own `error_log` instead, which is easy to miss. After the deploy,
   confirm that `logs/` (or the `ERROR_LOG_FILE` directory) exists and is
   writable, for example in cPanel's File Manager.
+- **Hide server versions on school servers:** set `ServerTokens Prod` and
+  `ServerSignature Off` in Apache's `httpd.conf`, and restart Apache. On the
+  dev laptop, Apache's own 403 page (from the hand check on
+  `logs/app-errors.log`) showed the Apache, OpenSSL and PHP versions. Afterwards
+  a 403 or 404 from Apache should name no versions, and the response's `Server`
+  header should read only `Apache`.
 
 ---
 
