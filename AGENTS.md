@@ -18,7 +18,7 @@
   | role `lecturer` (`users.role`, `LecturerController`, `/lecturer/...`) | Teacher, Teachers |
   | `course`, `courses`, `course_code` | Subject, Subjects, Subject code |
   | semester | Term |
-  | `window_start`, `window_end` | Not renamed yet. Teacher form: "Window opens" / "Window closes". Students: "Opens" / "Closes". `window_end` also decides when students see correct answers (StudentController::result), so it is more than a start deadline; decide that before relabelling it. |
+  | `window_start`, `window_end` | Not renamed yet. Teacher form: "Window opens" / "Window closes". Students: "Opens" / "Closes". `window_end` and the latest `deadline_at` (plus 5 min) decide when students see correct answers (`Exam::answerReveal`), so `window_end` is more than a start deadline; decide that before relabelling it. |
 
 - Render a stored role with `role_label()` in app/core/helpers.php, never the
   raw value.

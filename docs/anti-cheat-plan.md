@@ -27,7 +27,8 @@ Source messages are cited as `#n`, the record index in the transcript.
 | 3 | Migration 007 | **Done**, applied to local `exam_system` | `21f2d03` |
 | 4 | Server lock core | **Done**, hand checks completed 2026-09-21 | `cbdb96e` |
 | — | Error handling: an exception handler in the front controller, plus `register_shutdown_function` (before 4b) | **Done**, hand checks completed 2026-09-22 | `c92cf9c` |
-| 4b | Every deadline decision on the database clock | **Built and tested**, hand checks pending | see Part 4 |
+| 4b | Every deadline decision on the database clock | **Done**, hand checks completed 2026-09-22 | `659e23c` |
+| — | Multiple-choice options missing when `shuffle_options = 0` (after 4b is closed; its own brief) | **Not started** | — |
 | 5 | Client lock monitor and overlay | **Not started** | — |
 | 6 | Invigilator screen, read only | **Not started** | — |
 | 7 | Claim, code, unlock at the seat | **Not started** | — |
@@ -39,7 +40,9 @@ Source messages are cited as `#n`, the record index in the transcript.
 Every stage 4 hand check has passed. The results are under stage 4 in Part 4.
 The error handling (the error handler from the 16 Sep 1467 brief) is done:
 built, tested, and hand-checked on 22 Sep. Its section in Part 4 comes straight
-after stage 4. Step 4b is built and tested; its hand checks are next.
+after stage 4. Step 4b is done (`659e23c`, hand-checked 22 Sep). Next is the
+small fix for multiple-choice options missing when shuffling is off, with its
+own brief. Stage 5 comes after it.
 
 Production's commit: unknown, verify on the server before any deploy
 (`git log --oneline -1` on the server). Production must not be touched. `main`
@@ -1067,7 +1070,7 @@ fingerprints differed from the 21 Sep baseline only in HANDCHECK rows (subject
 lock tables were unchanged. MySQL shut down cleanly, with no MySQL warnings or
 errors in the Application event log.
 
-## Step 4b — Every deadline decision on the database clock · **Built and tested**, hand checks pending
+## Step 4b — Every deadline decision on the database clock · **Done**, `659e23c`
 
 The original filing, from 16 Sep: no brief was written then; 4b was created at `#917` and filed at `#1178`, and work was stopped before it began. The brief was written and approved on 22 Sep 2026; see "Added 2026-09-22" below.
 
@@ -1211,17 +1214,101 @@ test database.
   reveal, submitted or not, as specified. A test that forgot this failed
   first, and was corrected.
 
-**Hand checks (pending), in Edge:**
-1. **The real app, normal clock:** the timer starts at about 30:00, the
-   heartbeat's `remaining` matches it within 2 s, and F5 doesn't restart it.
-2. **The deadline, for real:** the HANDCHECK attempt's deadline is moved 90 s
-   out. The page counts down, a save before zero is **Saved**, and at 0:00 the
-   page submits itself, closing as `auto_submitted`. **This also covers the
-   open item "auto-submit at zero with the tab left open"** (not previously
-   written into this file).
-3. **A wrong PHP clock:** on test servers with PHP 12 h behind, then 13 h
-   ahead. The timer starts right, a save before the moved deadline is
-   **Saved**, and one after it is refused.
+### Added 2026-09-22: hand checks, all passed
+
+Done in Edge. MySQL was started and stopped with the clean scripts.
+Deadlines were moved with the database's own clock
+(`NOW() + INTERVAL`).
+
+1. **The real app, normal clock** (attempt 11, HANDCHECK exam 17). The timer
+   started at about 30:00, the heartbeat matched it, and F5 carried on rather
+   than restarting. The owner reported it done by moving on to check 2; no
+   figures were recorded.
+2. **The deadline, for real, with the tab left open.** Attempt 11's deadline
+   was moved to 13:18:18, 90 s out. After F5 the page counted down, and at
+   0:00 it submitted itself and landed on the result page: "submitted
+   automatically when time expired".
+   - **Database:** `auto_submitted`, with `submitted_at` 13:18:18, the
+     deadline's own second. `closed_by_system_at` was NULL, because the page
+     submitted it, not the sweep.
+   - **No answer had been saved.** Apache's log shows no `saveAnswer` for
+     attempt 11, so the "save before zero" half was not exercised here; check
+     3 covers it.
+   - **Reveal time:** "answers hidden until 4:08 PM" matched the rule:
+     `window_end` 16:08:33 was later than the deadline plus 5 min (13:23:18).
+   - **This closes the open item "auto-submit at zero with the tab left
+     open"** (not previously written into this file).
+3. **A wrong PHP clock**, on the test database.
+   - **PHP 12 h behind (8199, attempt 1):** the paper opened with the timer
+     at about 30:00. The deadline was moved to 13:47:36, 3 min out, and the
+     page was not reloaded.
+     - Abuja, chosen at about 13:45, showed **Answer saved** and was kept.
+     - Lagos, clicked after 13:48, was refused: it is not stored. The page
+       then submitted itself and landed on the result page.
+     - **Database:** `auto_submitted`, `submitted_at` 13:49:32, score 1.00 of
+       2.
+     - Before 4b this server would have accepted the late save, reading the
+       deadline as 12 h away.
+     - The reveal time (4:35 PM) matched `window_end` 16:35:55.
+   - **PHP 13 h ahead (8198, attempt 2):** the paper opened normally with
+     both questions and their options. Before 4b it would have closed on
+     opening. 7 and Abuja both showed **Answer saved** and are stored. The
+     heartbeat gave `remaining` 1654, matching the timer. The attempt stayed
+     in progress.
+   - **Both servers** were stopped and their ports checked free.
+   - **This check found the options bug.** Its first run used a fixture
+     exam with `shuffle_options = 0`, whose paper showed no options. It is
+     not a 4b regression; the code dates from July. It's queued as its own
+     change, "Multiple-choice options missing when shuffling is off", below.
+     Check 3 was rerun from the top with shuffling on.
+
+**Afterwards:** the hand-check script removed attempt 11. The `exam_system`
+fingerprints differed from the 21 Sep baseline only in HANDCHECK rows
+(subject 4, exam 18, and users 37 and 38's password hashes). MySQL shut down
+cleanly, with no MySQL warnings or errors in the Application event log.
+AGENTS.md's note on `window_end` now says that it and the latest
+`deadline_at` (plus 5 min) decide when correct answers are shown.
+
+## Multiple-choice options missing when shuffling is off · **Not started**
+
+Found on 22 Sep 2026 during 4b's hand check 3, and queued at the owner's
+decision: its own small change, with its own brief, **after 4b is closed**
+(4b closed the same day). Next in line, before stage 5.
+Not a 4b regression; the code dates from July.
+
+**The bug:**
+- `Attempt::start()` freezes an option order only when the exam has
+  `shuffle_options = 1`. Otherwise `attempt_questions.option_order` is NULL.
+- `questionsForAttempt()` (the paper) and `reviewForAttempt()` (the result
+  page) build a question's options only from `option_order`. A NULL becomes
+  `[]`, so every option disappears: the student sees "Select one:" and nothing
+  to choose.
+
+**Why it hasn't happened yet:** no controller or Teacher screen sets
+`shuffle_options`, the column defaults to 1, and on 22 Sep all 7 exams and
+all 5 attempts in the local `exam_system` had an order frozen. Only a direct
+database edit, or a future "don't shuffle" option, would trigger it.
+
+**Why no test caught it:** the suites that check options (`paper_test`,
+`autosave_test`, `sweep_test`) all shuffle. The ones that don't shuffle
+(`lock_test`, `lock_race_test`) never look at options, and `clock_test` uses
+a single essay question.
+
+**The fix to brief, then:**
+- `start()` always freezes the order: shuffled, or in id order when not
+  shuffling.
+- Both readers fall back to id order when `option_order` is NULL, so existing
+  rows show their options too.
+- A `shuffle_options = 0` exam in `paper_test`, asserting every option
+  arrives in id order on the paper and on the result page. Breaks: remove the
+  fallback; let `start()` leave NULL again.
+- No schema change.
+
+**Before that fix is deployed:** check the WhoGoHost database for exams with
+`shuffle_options = 0`, and for any attempts on them. A read-only query in
+phpMyAdmin:
+`SELECT id, title, shuffle_options FROM exams WHERE shuffle_options = 0;`
+The brief must say what to do with any it finds.
 
 ## Stage 5 — Client lock monitor and overlay · **Not started**
 
