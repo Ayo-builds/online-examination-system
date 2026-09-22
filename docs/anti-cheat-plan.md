@@ -28,7 +28,7 @@ Source messages are cited as `#n`, the record index in the transcript.
 | 4 | Server lock core | **Done**, hand checks completed 2026-09-21 | `cbdb96e` |
 | — | Error handling: an exception handler in the front controller, plus `register_shutdown_function` (before 4b) | **Done**, hand checks completed 2026-09-22 | `c92cf9c` |
 | 4b | Every deadline decision on the database clock | **Done**, hand checks completed 2026-09-22 | `659e23c` |
-| — | Multiple-choice options missing when `shuffle_options` is 0 or NULL | **Not started**, brief approved 2026-09-22 | — |
+| — | Multiple-choice options missing when `shuffle_options` is 0 or NULL | **Built** 2026-09-22, hand checks pending | — |
 | 5 | Client lock monitor and overlay | **Not started** | — |
 | 6 | Invigilator screen, read only | **Not started** | — |
 | 7 | Claim, code, unlock at the seat | **Not started** | — |
@@ -42,11 +42,11 @@ results are in Part 4, in that order.
 
 ### Next steps, in order
 
-1. **Build the options fix:** "Multiple-choice options missing when
-   shuffling is off" in Part 4, just before stage 5. The brief and both
-   decisions are approved; build, test, run the breaks, commit and push, then
-   the owner's hand checks. Before it is ever deployed, run the WhoGoHost
-   shuffle queries in that section.
+1. **Hand-check the options fix:** "Multiple-choice options missing when
+   shuffling is off" in Part 4, just before stage 5. It is built, tested on
+   PHP 8.0, 8.4 and 8.5 with every break caught, committed and pushed; the
+   owner's four hand checks in its brief are next. Before it is ever
+   deployed, run the WhoGoHost shuffle queries in that section.
 2. **Stage 5, client lock monitor and overlay.** It has no brief yet; write
    one and wait for approval. Its filed notes are under stage 5 in Part 4
    (submit must not lock, leftover labels, a 423 keeping the answer queued,
@@ -1326,7 +1326,7 @@ cleanly, with no MySQL warnings or errors in the Application event log.
 AGENTS.md's note on `window_end` now says that it and the latest
 `deadline_at` (plus 5 min) decide when correct answers are shown.
 
-## Multiple-choice options missing when shuffling is off · **Not started**, brief approved
+## Multiple-choice options missing when shuffling is off · **Built**, hand checks pending
 
 Found on 22 Sep 2026 during 4b's hand check 3, and queued at the owner's
 decision: its own small change, with its own brief, **after 4b is closed**
@@ -1424,6 +1424,45 @@ notes for a new session" in the status section).
 
 **Afterwards:** rerun the hand-check script, stop MySQL with the clean script,
 and diff `exam_system` against the baseline.
+
+### Added 2026-09-22: the build
+
+Built as briefed, in `app/models/Attempt.php` and `tests/paper_test.php`. No
+schema change.
+
+- `start()` freezes an order for every multiple-choice question: shuffled
+  when `shuffle_options = 1`, otherwise ascending ids (NULL counts as not
+  shuffled). The options query has `ORDER BY id`.
+- `frozenOptionOrder(?string $json, array $optionIds)` is a private helper
+  used by `questionsForAttempt()` and `reviewForAttempt()`. It keeps a valid,
+  non-empty list and otherwise returns every option id in ascending order.
+  Both options queries have `ORDER BY id`.
+
+**One departure in how O6 is tested, not in what it covers:**
+`option_order` is a `JSON` column, which MariaDB 10.4 stores as `LONGTEXT`
+with `CHECK (json_valid(option_order))` (MySQL's `JSON` type validates too),
+so invalid JSON can't be written to it. The fallback on invalid JSON is
+still in the helper, as decided. O6 stores `[]`, `null`, `"abc"` and `{}`,
+which are valid JSON but not a usable list, and checks each over HTTP. It
+also calls the helper through Reflection with `[5, 3`, a truly invalid
+string, plus one control with a valid order.
+
+**Tests:** Every suite passes on PHP 8.0.30,
+8.4.25 and 8.5.10 (autosave 47, clock 143, error 134, lock_race 17, lock
+173, paper 92, schema_007 260, sweep 80, enrollments_list 120), and node
+passes 55 of 55.
+
+**Breaks,** each applied alone to a pristine `Attempt.php`, with the hash
+checked after each restore:
+
+| Break | Failed |
+|---|---|
+| O1: `start()` leaves NULL again | O1's frozen-order checks, and O5's |
+| O2: O1's break plus no fallback in `questionsForAttempt()` | O1, O2, O3, O5 and O6 |
+| O3: no fallback in `questionsForAttempt()` | O3 and O6 |
+| O4: no fallback in `reviewForAttempt()` only | O4 only (options listed, choice marked) |
+| O5: `start()` writes no order when `shuffle_options` is NULL | O5's frozen-order checks only |
+| O6: fallback on NULL only | O6 only, all five checks |
 
 ### Before the options fix is deployed: WhoGoHost check
 

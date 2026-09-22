@@ -375,6 +375,178 @@ $row = $row->fetch();
 same('and the attempt has been closed', 'auto_submitted', $row['status'] ?? null);
 check('by the system', ($row['closed_by_system_at'] ?? null) !== null);
 
+// ---- O1-O7: options when shuffling is off ------------------------------------
+//
+// The paper and the result page draw a question's options only from
+// attempt_questions.option_order. start() used to write one only when
+// shuffle_options was exactly 1, so an exam at 0 or NULL showed every
+// multiple-choice question with nothing to choose.
+
+section('Options when shuffling is off');
+
+/** The option_order start() froze for one question, decoded; null if none. */
+function frozen_order(int $attemptId, int $questionId): ?array
+{
+    $stmt = Database::getInstance()->prepare(
+        "SELECT option_order FROM attempt_questions WHERE attempt_id = ? AND question_id = ?"
+    );
+    $stmt->execute([$attemptId, $questionId]);
+    $json = $stmt->fetchColumn();
+
+    return is_string($json) ? json_decode($json, true) : null;
+}
+
+function set_order(int $attemptId, int $questionId, ?string $json): void
+{
+    Database::getInstance()
+        ->prepare("UPDATE attempt_questions SET option_order = ? WHERE attempt_id = ? AND question_id = ?")
+        ->execute([$json, $attemptId, $questionId]);
+}
+
+/** The paper's options for each question, keyed by question id. */
+function paper_options(string $who, int $attemptId): array
+{
+    global $tokens;
+
+    $res = http($who, 'POST', 'student/paper/' . $attemptId, ['csrf_token' => $tokens[$who]]);
+    check("$who's paper for attempt $attemptId returns 200", $res['status'] === 200, 'status ' . $res['status']);
+
+    $out = [];
+    foreach ($res['json']['questions'] ?? [] as $q) {
+        $out[(int) $q['question_id']] = $q['options'];
+    }
+    return $out;
+}
+
+// A second multiple-choice question. Its options go in with their text in
+// reverse alphabetical order, so id order and text order differ.
+$mcq2Text = 'Which city is the capital of Nigeria?';
+$db->prepare("INSERT INTO questions (course_id, question_type, question_text, marks, created_by) VALUES (?, 'mcq', ?, 2, ?)")
+   ->execute([$courseId, $mcq2Text, $lecturerId]);
+$mcq2Id = (int) $db->lastInsertId();
+
+$option2Texts = ['Lagos', 'Kano', 'Ibadan', 'Abuja'];
+$option2Ids = [];
+foreach ($option2Texts as $text) {
+    $db->prepare("INSERT INTO question_options (question_id, option_text, is_correct) VALUES (?,?,?)")
+       ->execute([$mcq2Id, $text, $text === 'Abuja' ? 1 : 0]);
+    $option2Ids[] = (int) $db->lastInsertId();
+}
+
+// $optionIds and $option2Ids are already ascending: AUTO_INCREMENT.
+$expected = [
+    $mcqId  => ['ids' => $optionIds,  'texts' => $optionTexts],
+    $mcq2Id => ['ids' => $option2Ids, 'texts' => $option2Texts],
+];
+
+/** An exam drawing all three questions, with shuffle_options as given. */
+function unshuffled_exam(string $title, ?int $shuffle): int
+{
+    global $db, $courseId, $mcqId, $mcq2Id, $essayId;
+
+    $db->prepare(
+        "INSERT INTO exams
+            (course_id, title, instructions, duration_minutes, questions_per_attempt,
+             shuffle_options, window_start, window_end, pass_mark, status)
+         VALUES (?,?,?,?,?,?, DATE_SUB(NOW(), INTERVAL 1 HOUR), DATE_ADD(NOW(), INTERVAL 6 HOUR), 40, 'published')"
+    )->execute([$courseId, $title, 'Read carefully.', 60, 3, $shuffle]);
+    $id = (int) $db->lastInsertId();
+
+    foreach ([$mcqId, $mcq2Id, $essayId] as $qid) {
+        $db->prepare("INSERT INTO exam_question_pool (exam_id, question_id) VALUES (?,?)")->execute([$id, $qid]);
+    }
+    return $id;
+}
+
+/** O1 and O2 for one attempt: the frozen order, then the paper. */
+function check_in_id_order(string $label, string $who, int $attemptId): void
+{
+    global $expected, $essayId;
+
+    foreach ($expected as $qid => $e) {
+        same("$label: question $qid froze its option ids in ascending order",
+            $e['ids'], frozen_order($attemptId, $qid));
+    }
+    same("$label: the essay still has no option order", null, frozen_order($attemptId, $essayId));
+
+    $options = paper_options($who, $attemptId);
+    foreach ($expected as $qid => $e) {
+        same("$label: the paper shows every option of question $qid, in id order",
+            $e['ids'], array_map(static fn($o) => $o['id'], $options[$qid] ?? []));
+        same("$label: with its text",
+            $e['texts'], array_map(static fn($o) => $o['text'], $options[$qid] ?? []));
+    }
+}
+
+// O1, O2: shuffle_options = 0.
+$exam0 = unshuffled_exam('Unshuffled Zero', 0);
+$res = http('bola', 'POST', 'student/startExam/' . $exam0, ['csrf_token' => $tokens['bola']]);
+same('Bola starts the shuffle_options = 0 exam', 302, $res['status']);
+$bola0 = (int) (new Attempt())->findByExamAndStudent($exam0, $students['bola']['id'])['id'];
+check_in_id_order('O1/O2 (shuffle 0)', 'bola', $bola0);
+
+// O5: shuffle_options NULL behaves like 0.
+$examNull = unshuffled_exam('Unshuffled Null', null);
+$res = http('ada', 'POST', 'student/startExam/' . $examNull, ['csrf_token' => $tokens['ada']]);
+same('Ada starts the shuffle_options NULL exam', 302, $res['status']);
+$adaNull = (int) (new Attempt())->findByExamAndStudent($examNull, $students['ada']['id'])['id'];
+check_in_id_order('O5 (shuffle NULL)', 'ada', $adaNull);
+
+// O3: a row already in a database with no order, as every attempt on an
+// unshuffled exam had before this fix. An answer is saved on it, as on a resume.
+set_order($bola0, $mcqId, null);
+set_order($bola0, $mcq2Id, null);
+$db->prepare("INSERT INTO attempt_answers (attempt_id, question_id, selected_option_id) VALUES (?,?,?)")
+   ->execute([$bola0, $mcq2Id, $option2Ids[3]]);
+
+$options = paper_options('bola', $bola0);
+foreach ($expected as $qid => $e) {
+    same("O3: with option_order NULL, the paper still shows every option of question $qid, in id order",
+        $e['ids'], array_map(static fn($o) => $o['id'], $options[$qid] ?? []));
+}
+
+// O4: the same attempt, submitted, on its result page.
+$res = http('bola', 'POST', 'student/submitExam/' . $bola0, ['csrf_token' => $tokens['bola']]);
+same('Bola submits the attempt with no option order', 302, $res['status']);
+
+$result = http('bola', 'GET', 'student/result/' . $bola0);
+same('its result page returns 200', 200, $result['status']);
+foreach ($expected as $qid => $e) {
+    $positions = array_map(static fn($t) => strpos($result['body'], htmlspecialchars($t)), $e['texts']);
+    check("O4: the result page lists every option of question $qid",
+        !in_array(false, $positions, true), 'positions ' . json_encode($positions));
+    $sorted = $positions;
+    sort($sorted);
+    same("O4: in id order", $sorted, $positions);
+}
+same('O4: with the one saved choice marked', 1, substr_count($result['body'], 'opt__radio--on'));
+
+// O6: JSON that is not a usable list falls back to id order, like NULL.
+// The column is JSON, which both MariaDB and MySQL validate, so invalid
+// JSON cannot be stored; the helper is also called with it directly below.
+foreach (['[]', 'null', '"abc"', '{}'] as $json) {
+    set_order($adaNull, $mcqId, $json);
+    $options = paper_options('ada', $adaNull);
+    same("O6: option_order $json falls back to id order",
+        $optionIds, array_map(static fn($o) => $o['id'], $options[$mcqId] ?? []));
+}
+
+$helper = new ReflectionMethod(Attempt::class, 'frozenOptionOrder');
+if (PHP_VERSION_ID < 80100) {
+    $helper->setAccessible(true); // a no-op from 8.1 and deprecated in 8.5
+}
+same('O6: invalid JSON, handed to the helper, falls back to id order',
+    [3, 5, 9], $helper->invoke(new Attempt(), '[5, 3', [9, 3, 5]));
+same('O6: and a valid, non-empty order is kept as it is',
+    [9, 3], $helper->invoke(new Attempt(), '[9, 3]', [9, 3, 5]));
+
+// O7: a shuffled exam is unchanged. Bola's first attempt still holds the
+// order start() froze (only Ada's was overwritten above).
+$shuffled = frozen_order($attemptIds['bola'], $mcqId);
+$sortedShuffled = $shuffled ?? [];
+sort($sortedShuffled);
+same('O7: a shuffled exam still freezes a permutation of every option', $optionIds, $sortedShuffled);
+
 // ---- Diagnostics ----------------------------------------------------------
 
 section('Diagnostics');

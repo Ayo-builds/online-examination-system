@@ -64,7 +64,10 @@ class Attempt extends Model
                 throw new RuntimeException('Pool too small for the configured draw.');
             }
 
-            // 3. Freeze each question: display order + shuffled option order
+            // 3. Freeze each question: display order + option order. Every MCQ
+            //    gets an order, shuffled or not, because the paper and the
+            //    result page draw options only from it. shuffle_options is
+            //    nullable, and NULL counts as not shuffled: ids in ascending order.
             $snapStmt = $this->db->prepare(
                 "INSERT INTO attempt_questions (attempt_id, question_id, display_order, option_order)
                  VALUES (?, ?, ?, ?)"
@@ -73,15 +76,17 @@ class Attempt extends Model
             foreach ($drawn as $order => $q) {
                 $optionOrder = null;
 
-                if ($q['question_type'] === 'mcq' && (int) $exam['shuffle_options'] === 1) {
+                if ($q['question_type'] === 'mcq') {
                     $optionIds = array_map(
                         fn($r) => (int) $r['id'],
                         $this->query(
-                            "SELECT id FROM question_options WHERE question_id = ?",
+                            "SELECT id FROM question_options WHERE question_id = ? ORDER BY id",
                             [(int) $q['id']]
                         )->fetchAll()
                     );
-                    shuffle($optionIds);
+                    if ((int) $exam['shuffle_options'] === 1) {
+                        shuffle($optionIds);
+                    }
                     $optionOrder = json_encode($optionIds);
                 }
 
@@ -143,7 +148,7 @@ class Attempt extends Model
 
             if ($row['question_type'] === 'mcq') {
                 $allOptions = $this->query(
-                    "SELECT id, option_text FROM question_options WHERE question_id = ?",
+                    "SELECT id, option_text FROM question_options WHERE question_id = ? ORDER BY id",
                     [(int) $row['question_id']]
                 )->fetchAll();
 
@@ -153,11 +158,10 @@ class Attempt extends Model
                     $byId[(int) $o['id']] = $o['option_text'];
                 }
 
-                // Rebuild in the frozen order from option_order JSON
-                $order = json_decode($row['option_order'] ?? '[]', true) ?: [];
-                foreach ($order as $optId) {
-                    if (isset($byId[(int) $optId])) {
-                        $row['options'][] = ['id' => (int) $optId, 'text' => $byId[(int) $optId]];
+                // Rebuild in the frozen order
+                foreach ($this->frozenOptionOrder($row['option_order'], array_keys($byId)) as $optId) {
+                    if (isset($byId[$optId])) {
+                        $row['options'][] = ['id' => $optId, 'text' => $byId[$optId]];
                     }
                 }
             }
@@ -165,6 +169,26 @@ class Attempt extends Model
         unset($row);
 
         return $rows;
+    }
+
+    // The order a question's options are shown in, for the paper and the
+    // result page alike: the order frozen at start() when it is valid,
+    // non-empty JSON, and otherwise every option id in ascending order.
+    // Attempts started before start() froze an order for every MCQ hold NULL
+    // here, and a NULL, invalid JSON or [] must never leave a question with
+    // nothing to choose. An option missing from a valid frozen order is still
+    // not shown, so one added after the paper was frozen doesn't appear mid-exam.
+    private function frozenOptionOrder(?string $json, array $optionIds): array
+    {
+        $order = $json === null ? null : json_decode($json, true);
+
+        if (is_array($order) && $order !== []) {
+            return array_map('intval', array_values($order));
+        }
+
+        $optionIds = array_map('intval', $optionIds);
+        sort($optionIds);
+        return $optionIds;
     }
 
     // Close an attempt on the server's authority: its deadline has passed and
@@ -678,7 +702,7 @@ class Attempt extends Model
 
             $all = $this->query(
                 "SELECT id, option_text, is_correct
-                 FROM question_options WHERE question_id = ?",
+                 FROM question_options WHERE question_id = ? ORDER BY id",
                 [(int) $row['question_id']]
             )->fetchAll();
 
@@ -687,9 +711,7 @@ class Attempt extends Model
                 $byId[(int) $o['id']] = $o;
             }
 
-            $order = json_decode($row['option_order'] ?? '[]', true) ?: [];
-            foreach ($order as $optId) {
-                $optId = (int) $optId;
+            foreach ($this->frozenOptionOrder($row['option_order'], array_keys($byId)) as $optId) {
                 if (!isset($byId[$optId])) {
                     continue;
                 }
