@@ -1,0 +1,21 @@
+# No file in this directory is meant to be fetched over HTTP.
+#
+# ErrorHandler writes app-errors.log here: error messages, file paths and user
+# ids. The common XAMPP layout puts the whole repository inside the document
+# root, which would otherwise serve that log to anyone who asks for it.
+#
+# This is the second layer. The first is keeping this directory outside the
+# web root: point DocumentRoot at public/, or set ERROR_LOG_FILE in config to
+# a path outside it. nginx ignores this file, so on an nginx host only the
+# first layer counts. Keep both.
+
+<IfModule mod_authz_core.c>
+    # Apache 2.4
+    Require all denied
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    # Apache 2.2
+    Order deny,allow
+    Deny from all
+</IfModule>

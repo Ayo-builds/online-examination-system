@@ -30,6 +30,16 @@ define('APP_NAME', 'Online Examination System');
 // a subdirectory the way XAMPP does.
 define('BASE_URL', '/');
 
+// ---- Errors ------------------------------------------------------------------
+// Test runs log here, never to logs/app-errors.log. Guarded so a suite's own
+// config (tests/config.errors*.php) can choose first.
+//
+// DISPLAY_ERRORS is left undefined on purpose: undefined must count as off,
+// and tests/error_test.php relies on this file to prove it.
+if (!defined('ERROR_LOG_FILE')) {
+    define('ERROR_LOG_FILE', APP_ROOT . '/tests/logs/app-errors.test.log');
+}
+
 // ---- Sign-in throttling ------------------------------------------------------
 define('MAX_LOGIN_ATTEMPTS', 5);
 define('LOGIN_LOCKOUT_MINUTES', 15);

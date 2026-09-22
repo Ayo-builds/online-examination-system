@@ -1,6 +1,22 @@
 <?php
 declare(strict_types=1);
 
+// APP_ROOT = the exam-system folder itself (one level UP from /public)
+define('APP_ROOT', dirname(__DIR__));
+
+// The URL as the Router reads it. Only a string counts: ?url[]=x is no route.
+$url = isset($_GET['url']) && is_string($_GET['url']) ? $_GET['url'] : '';
+
+// ---- Errors: handled from here on ----
+//
+// First, so an error anywhere after this line - the session, the config, a
+// controller's constructor - gets a logged id and a safe answer: JSON for a
+// JSON route, a plain page for the rest. Loaded by hand because the
+// autoloader is not registered yet. See app/core/ErrorHandler.php.
+require_once APP_ROOT . '/app/core/Router.php';
+require_once APP_ROOT . '/app/core/ErrorHandler.php';
+ErrorHandler::install($url);
+
 // ---- Session hardening (must run BEFORE session_start) ----
 //
 // Reject a session id the client invented rather than adopting it, which is
@@ -54,9 +70,6 @@ header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 header('X-XSS-Protection: 0');
 
-// APP_ROOT = the exam-system folder itself (one level UP from /public)
-define('APP_ROOT', dirname(__DIR__));
-
 // Which config to load. Normally there is no choice: config/config.php.
 //
 // A test run may point the app at its own config instead, but ONLY under PHP's
@@ -81,6 +94,9 @@ if (PHP_SAPI === 'cli-server') {
 
 require_once $configFile;
 
+// Details on screen only where config says DISPLAY_ERRORS is true.
+ErrorHandler::applyConfig();
+
 // Plain functions, so the autoloader below cannot reach them.
 require_once APP_ROOT . '/app/core/helpers.php';
 
@@ -103,4 +119,4 @@ spl_autoload_register(function (string $class) {
 
 // ---- Hand the request to the Router ----
 $router = new Router();
-$router->dispatch($_GET['url'] ?? '');
+$router->dispatch($url);

@@ -26,6 +26,18 @@ define('APP_NAME', 'Online Examination System');
 // This is not a hostname: the same value works for localhost and a LAN IP.
 define('BASE_URL', '/exam-system/public/');
 
+// ---- Errors ------------------------------------------------------------------
+// true shows an error's details (message, file, trace) on the error page.
+// Only on a developer's own machine. Everywhere else leave it false: users see
+// a short error id to report, and the details go to the log. Missing counts as
+// false. JSON answers never carry details, whatever this says.
+define('DISPLAY_ERRORS', false);
+
+// Where errors are logged, one line each. Default when not set:
+// logs/app-errors.log in this repository, which is outside public/. On a host
+// where the repository sits inside the web root, point this outside it.
+// define('ERROR_LOG_FILE', '/home/account/exam-logs/app-errors.log');
+
 // ---- Sign-in throttling ------------------------------------------------------
 // Both are required. Auth::recordFailure() references them directly, so a
 // missing value is a fatal error on the first failed sign-in, not a warning.

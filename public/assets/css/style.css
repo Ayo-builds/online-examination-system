@@ -1123,6 +1123,23 @@ input[type="date"], input[type="datetime-local"], input[type="number"], input[ty
   margin-bottom: 0.5rem;
 }
 
+/* The id on the 500 page, read out over the phone: mono, never broken. */
+.error-id {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+/* Error details: shown only where config sets DISPLAY_ERRORS true. */
+.error-details {
+  margin-top: 1.25rem;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Exam runner --------------------------------------------------
    The highest-stakes screen in the app. Chrome stays quiet so the paper and
    the clock carry it; nothing here competes with the question text.

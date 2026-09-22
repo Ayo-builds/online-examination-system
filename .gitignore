@@ -1,6 +1,10 @@
 config/config.php
 config/config.test.php
-logs/
+# Error logs (ErrorHandler). Only the rule that keeps them off the web is
+# tracked. The test suites write theirs under tests/logs/.
+logs/*
+!logs/.htaccess
+tests/logs/
 seed*.php
 node_modules/
 

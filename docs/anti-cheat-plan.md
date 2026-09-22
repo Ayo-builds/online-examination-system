@@ -17,7 +17,7 @@ not resolve from this file's directory; read them as paths, not as links.
 
 Source messages are cited as `#n`, the record index in the transcript.
 
-## Status at 2026-09-21
+## Status at 2026-09-22
 
 | # | Stage | Status | Commit |
 |---|---|---|---|
@@ -26,7 +26,7 @@ Source messages are cited as `#n`, the record index in the transcript.
 | — | Hand-check dev script (support, not a numbered stage) | **Done** | `d5b5a37` |
 | 3 | Migration 007 | **Done**, applied to local `exam_system` | `21f2d03` |
 | 4 | Server lock core | **Done**, hand checks completed 2026-09-21 | `cbdb96e` |
-| — | Error handling: an exception handler in the front controller, plus `register_shutdown_function` (next, before 4b) | **Not started** | — |
+| — | Error handling: an exception handler in the front controller, plus `register_shutdown_function` (before 4b) | **Built and tested**, hand checks pending | see Part 4 |
 | 4b | Every deadline decision on the database clock | **Not started** | — |
 | 5 | Client lock monitor and overlay | **Not started** | — |
 | 6 | Invigilator screen, read only | **Not started** | — |
@@ -37,9 +37,9 @@ Source messages are cited as `#n`, the record index in the transcript.
 | 11 | Words and docs | **Not started** | — |
 
 Every stage 4 hand check has passed. The results are under stage 4 in Part 4.
-Next is the error handling: an exception handler in the front controller, plus
-`register_shutdown_function`. This is the error handler from the 16 Sep 1467
-brief, still open under stage 4 in Part 4. Step 4b comes after it.
+The error handling (the error handler from the 16 Sep 1467 brief) is built and
+tested. Its hand checks come next; step 4b comes after them. Its section in
+Part 4 comes straight after stage 4.
 
 Production's commit: unknown, verify on the server before any deploy
 (`git log --oneline -1` on the server). Production must not be touched. `main`
@@ -902,6 +902,133 @@ and both were caught:
 R4 also caught the first break under a real race. No commit since `cbdb96e`
 has touched `app/` or `tests/`.
 
+## Error handling (before 4b) · **Built and tested**, hand checks pending
+
+Added 2026-09-22. Brief sent and approved on 21–22 Sep, with the changes
+folded in below. It closes the error-handler item left open by the 16 Sep 1467
+brief.
+
+**Agreed:**
+- One exception handler in the front controller, plus
+  `register_shutdown_function` for fatal errors.
+- JSON routes return HTTP 500 with `{"ok":false,"error":"server","id":"<id>"}`
+  and no details.
+- Page routes show a plain error page with the id: "Something went wrong on
+  our side. It wasn't anything you did. If it keeps happening, report this
+  code: XXXX-XXXX." Students, Teachers and Admins all see it.
+- `display_errors` comes from config: on for the developer's laptop, off
+  everywhere else.
+- Warnings are logged only, never turned into exceptions.
+
+**Built:**
+- **[ErrorHandler.php](app/core/ErrorHandler.php)** is installed on the first
+  lines of [index.php](public/index.php), before the session and the config.
+  It uses `set_exception_handler`, `register_shutdown_function` for the fatal
+  types, and `set_error_handler` for warnings, notices and deprecations. The
+  warning handler logs and returns `false`, so PHP behaves as before.
+- **JSON or page is decided by route, from the URL, before any controller
+  runs.** `Router::routeKey()` is shared with the Router, and is
+  case-insensitive the way PHP method lookup is. `ErrorHandler::JSON_ROUTES`
+  lists the six actions that call `$this->json()`.
+- **The id** is `XXXX-XXXX`, drawn with `random_int` from Password.php's
+  alphabet. The same id goes on the page or in the JSON, and on the log line.
+- **Output:** the handler opens its own output buffer (no callback). On an
+  error it clears every buffer, including views' nested ones, and removes
+  `Location`, `Content-Type`, `Content-Disposition`, `Content-Length` and
+  `Refresh`. It sends 500 and `Cache-Control: no-store`. If headers were
+  already sent, it only appends one line with the id.
+- **The page** is [error_500.php](app/views/error_500.php). It touches neither
+  the database nor the session, and checks each constant before use. If
+  rendering it throws, a fallback page that depends on nothing is sent instead,
+  and the failure is logged under the same id.
+- **Details** (class, message, file:line, trace) appear on the page only when
+  config sets `DISPLAY_ERRORS` to `true`. Missing counts as false. JSON never
+  carries details. `display_errors` is 0 from the first line, whatever php.ini
+  says, until config decides.
+- **Log:** `ERROR_LOG_FILE`, defaulting to `logs/app-errors.log`, which is
+  outside `public/`. One line per error: time, id, level, class, message
+  (flattened, capped at 1,000 characters), relative file:line, method and URL
+  path, user id, and `tx=`. Request bodies and query strings are never logged.
+  Writes use `FILE_APPEND|LOCK_EX`, falling back to PHP's `error_log()`. The
+  log rotates at 5 MB, keeping one old file.
+- **`logs/.htaccess`** denies web access on Apache, because on XAMPP the repo
+  sits inside htdocs. `.gitignore` tracks only that file in `logs/`.
+- **Open transaction:** `Database::rollBackIfOpen()` never opens a connection.
+  The log records `tx=none`, `rolled back` or `rollback failed`. MySQL would
+  roll back on disconnect anyway, so this is a backstop: it frees locks sooner
+  and flags code that forgot its own rollback.
+- **Two exits became exceptions:** `Database::getInstance()` no longer calls
+  `exit('Database connection failed.')`, which used to answer JSON routes with
+  a plain-text 200. `Controller::view()` no longer echoes a missing view's path.
+- **PHP versions:** the code is written for 8.0 and tested on 8.0.30, 8.4.25
+  and 8.5.10. WhoGoHost runs 8.5.9, but no checksum is published for that
+  archived build, so 8.5.10 was used; its SHA-256 matched windows.php.net. On
+  8.5, a fatal error's message can carry a backtrace; the log keeps only the
+  first line. `curl_close()` is deprecated in 8.5 and has done nothing since
+  8.0, so it was removed from the five test HTTP helpers.
+
+**Not covered, on purpose:** the marketing pages, which are served directly
+and touch no database, and CLI scripts.
+
+**Tests:** [error_test.php](tests/error_test.php) drives the real app on four
+`php -S` servers (8091–8094).
+- **No throw-on-purpose route exists in the app.** Real routes fail because
+  `exam_attempts` is renamed in the test database (restored in a `finally`,
+  and repaired at the start of the next run if a crashed run left it renamed).
+  E14 drops the test database, which is rebuilt before exit. Faults that need
+  code (a fatal, half a page, an open transaction) come from
+  [FaultController.php](tests/faults/FaultController.php), which
+  [router.php](tests/router.php) loads only when the suite starts a server
+  with `EXAM_FAULTS=1`.
+- `/fault/memory` sets its own 16M `memory_limit` before exhausting memory.
+
+| # | Test | Break that must fail it |
+|---|---|---|
+| E1 | JSON route (`student/heartbeat`, table gone): 500, JSON, no-store, exactly `ok,error,id`, id from Password.php's exact alphabet | Heartbeat left off the JSON list; status 200; alphabet `IO01` |
+| E2 | Page route (`student/dashboard`): 500 HTML page with the sentence and id | Every route treated as JSON |
+| E3 | `Student//HeartBeat/1/` is a JSON route | Case-sensitive route key |
+| E4 | `JSON_ROUTES` is exactly the actions that call `$this->json()` | `student/event` dropped from the list |
+| E5 | Fatal (memory) caught by the shutdown function | `register_shutdown_function` removed |
+| E6 | Display undefined or false hides every detail probe; control: display on shows them on the page; JSON never shows them | Display always on; undefined treated as on; JSON given a `detail` key |
+| E7 | The id shown to the user is on exactly one log line, with class, message, file:line and request | The id generated twice |
+| E8 | Half a page, in nested buffers, is thrown away | Buffer clearing removed |
+| E9 | After a flush: only the sentence and id are added, no second page | Headers-sent branch removed |
+| E10 | Open transaction: `tx=rolled back`, row gone | Rollback removed |
+| E11 | No connection opened by the handler: `tx=none` | — (see E14) |
+| E12 | A warning: 200, full page, one `warning` line | Warnings converted to `ErrorException` |
+| E13 | `/fault/...` is a 404 without `EXAM_FAULTS` | FaultController copied into `app/controllers` |
+| E14 | Database gone: JSON 500 and page 500, `tx=none`, one line each | `exit()` restored; handler connects |
+| E15 | Error page itself fails: fallback page with the id, two log lines | try/catch around rendering removed |
+| E16 | No diagnostics in the runner | — |
+| E17 | Log rotates at 5 MB to `.1` | Rotation removed |
+
+**Results, 22 Sep 2026:**
+- **error_test.php:** 134 passed, 0 failed on each of PHP 8.0.30 (XAMPP),
+  8.4.25 (Herd) and 8.5.10.
+- **Vacuity:** 20 breaks, each applied alone. All 20 were caught by the
+  assertion they target, and every file was restored and its hash re-checked.
+- **Existing suites, on all three versions:** autosave 47, sweep 80, paper 53,
+  lock 173, lock race 17, schema 007 260, enrolments list 120, all passing; node
+  55 passing.
+- **Server-side diagnostics:** the test servers logged no warning, notice or
+  deprecation in any of those runs. Before this work that could not be seen.
+- **Found along the way:** on 8.4 and 8.5 the enrolments suite failed.
+  `fputcsv()` and `fgetcsv()` without an explicit `$escape` are deprecated from
+  PHP 8.4, and the fixture generator's deprecations landed inside its CSV.
+  `StudentImport::parse()` makes the same `fgetcsv()` call in production code.
+  Both now pass `'\\'`, the old default, so files parse exactly as before and
+  the live 8.5 host logs nothing per row.
+- **Apache smoke check on the laptop:** `/fault/memory` is 404;
+  `logs/app-errors.log`, `logs/.htaccess` and `config/config.php` are 403.
+
+**Hand checks (pending), in Edge:**
+1. A page route error with details shown on the laptop.
+2. The same with `DISPLAY_ERRORS` false: code only, nothing in the source.
+3. A JSON route error from the console, then autosave recovering once MySQL
+   is back.
+4. A fatal on the test server, and `/fault/memory` a 404 on Apache.
+5. `logs/app-errors.log` is 403 over HTTP.
+
 ## Step 4b — Every deadline decision on the database clock · **Not started**
 
 Brief: NOT FOUND IN TRANSCRIPT. No brief was written; 4b was created at `#917` and filed at `#1178`, and work was stopped before it began.
@@ -1065,6 +1192,23 @@ deployment-checklist items, not application changes.
 - **Check the existing tables' collations** before deploying: loading
   `schema_import.sql` into a database created with a latin1 default gets latin1
   tables.
+
+### Added 2026-09-22: error logging on a server
+
+- **`DISPLAY_ERRORS`** must be `false` or absent in the server's
+  `config/config.php`. Only the developer's laptop sets it `true`.
+- **The error log must be outside the web root.** The default,
+  `logs/app-errors.log`, is outside it when the docroot is `public/`. WhoGoHost's
+  subdomain docroot is `public/`, served through nginx, which ignores
+  `.htaccess`. Anywhere the repository sits inside the web root, set
+  `ERROR_LOG_FILE` in config to a path outside it.
+- **Check it:** request the log's URL in a browser (for example
+  `/logs/app-errors.log`, and the same path under the app's base URL). The
+  answer must be 403 or 404, never the file.
+- **The log directory must be writable** by the PHP user. If it isn't, lines go
+  to PHP's own `error_log` instead, which is easy to miss. After the deploy,
+  confirm that `logs/` (or the `ERROR_LOG_FILE` directory) exists and is
+  writable, for example in cPanel's File Manager.
 
 ---
 

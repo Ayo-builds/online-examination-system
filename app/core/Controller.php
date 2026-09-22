@@ -8,9 +8,10 @@ abstract class Controller
 
         $file = APP_ROOT . '/app/views/' . $path . '.php';
 
+        // A missing view is a bug: ErrorHandler logs the path and shows the
+        // user an error id, never the path itself.
         if (!file_exists($file)) {
-            http_response_code(500);
-            exit('View not found: ' . htmlspecialchars($path));
+            throw new RuntimeException('View not found: ' . $path);
         }
 
         require $file;

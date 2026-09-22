@@ -59,7 +59,10 @@ class StudentImport extends Model
         $lineNo   = 0;
         $dataRows = 0;
 
-        while (($cells = fgetcsv($handle)) !== false) {
+        // Every argument spelled out: PHP 8.4 deprecates leaving $escape to
+        // its default, and the live host runs 8.5. '\\' is that old default,
+        // so a file parses exactly as it always has.
+        while (($cells = fgetcsv($handle, null, ',', '"', '\\')) !== false) {
             $lineNo++;
 
             // fgetcsv hands back [null] for a blank line.

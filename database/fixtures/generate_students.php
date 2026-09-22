@@ -57,7 +57,9 @@ if ($handle === false) {
     exit(1);
 }
 
-fputcsv($handle, ['name', 'class', 'admission_no']);
+// $escape is spelled out: PHP 8.4 deprecates leaving it to its default, and a
+// deprecation printed to stdout would land inside the CSV. '\\' is that default.
+fputcsv($handle, ['name', 'class', 'admission_no'], ',', '"', '\\');
 
 for ($i = 0; $i < $rows; $i++) {
     // The surname advances every 7 rows while the first name advances every
@@ -70,7 +72,7 @@ for ($i = 0; $i < $rows; $i++) {
         ? SUPPLIED_PREFIX . str_pad((string) $i, 3, '0', STR_PAD_LEFT)
         : '';
 
-    fputcsv($handle, [$name, $classes[$i % count($classes)], $admissionNo]);
+    fputcsv($handle, [$name, $classes[$i % count($classes)], $admissionNo], ',', '"', '\\');
 }
 
 fclose($handle);

@@ -123,8 +123,12 @@ function test_reset_database(): void
  * assertion, on an uncaught exception and on a fatal error. It does not run
  * when the console is closed or Ctrl+C is pressed on Windows; a server left
  * that way is caught by the port check on the next run.
+ *
+ * $env adds variables for the server alone. tests/error_test.php passes
+ * EXAM_FAULTS=1, which makes tests/router.php load the test-only
+ * FaultController; no other suite's server can reach it.
  */
-function test_start_server(string $host, int $port, string $config = 'config/config.test.php'): void
+function test_start_server(string $host, int $port, string $config = 'config/config.test.php', array $env = []): void
 {
     $probe = @fsockopen($host, $port, $errno, $errstr, 0.5);
     if ($probe) {
@@ -146,7 +150,7 @@ function test_start_server(string $host, int $port, string $config = 'config/con
         [1 => ['file', $log, 'a'], 2 => ['file', $log, 'a']],
         $pipes,
         APP_ROOT,
-        array_merge(getenv(), ['EXAM_CONFIG' => $config])
+        array_merge(getenv(), ['EXAM_CONFIG' => $config], $env)
     );
 
     if (!is_resource($server)) {

@@ -20,11 +20,34 @@ class Database
                 // Align MySQL's session clock with PHP's (+01:00 = WAT / Africa/Lagos)
                 self::$instance->exec("SET time_zone = '+01:00'");
             } catch (PDOException $e) {
-                // Never echo $e->getMessage() to the browser, because it can leak credentials
-                error_log($e->getMessage());
-                exit('Database connection failed.');
+                // Thrown, not echoed: ErrorHandler answers in the route's own
+                // shape (a JSON route gets JSON) and logs the PDO reason as the
+                // cause. The browser never sees it; it can name the account.
+                throw new RuntimeException('Database connection failed.', 0, $e);
             }
         }
         return self::$instance;
+    }
+
+    /**
+     * For ErrorHandler: roll back a transaction left open by a request that
+     * failed. Never opens a connection, and never throws.
+     *
+     * @return string 'none', 'rolled back' or 'rollback failed', for the log
+     */
+    public static function rollBackIfOpen(): string
+    {
+        if (self::$instance === null) {
+            return 'none';
+        }
+        try {
+            if (!self::$instance->inTransaction()) {
+                return 'none';
+            }
+            self::$instance->rollBack();
+            return 'rolled back';
+        } catch (Throwable $e) {
+            return 'rollback failed';
+        }
     }
 }

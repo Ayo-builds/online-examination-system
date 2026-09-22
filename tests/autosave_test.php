@@ -101,7 +101,6 @@ function http(string $method, string $path, array $post = [], array $opts = []):
 
     $body   = (string) curl_exec($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
 
     $json = json_decode($body, true);
 
